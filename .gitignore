@@ -1,0 +1,23 @@
+# Local editor and notebook state
+.vscode/
+.ipynb_checkpoints/
+
+# Compiled and generated build artefacts
+build/
+dist/
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+*.mod
+*.smod
+*.dSYM/
+__pycache__/
+*.py[cod]
+
+# SUMMA forcing input data
+model/forcing/4_SUMMA_input/CAN_05BB001_em_earth_distributed.nc
