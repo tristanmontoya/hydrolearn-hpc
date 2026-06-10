@@ -1,4 +1,5 @@
 # Local editor and notebook state
+.DS_Store
 .vscode/
 .ipynb_checkpoints/
 
@@ -20,4 +21,4 @@ __pycache__/
 *.py[cod]
 
 # SUMMA forcing input data
-model/forcing/4_SUMMA_input/CAN_05BB001_em_earth_distributed.nc
+**/model/forcing/4_SUMMA_input/CAN_05BB001_em_earth_distributed.nc

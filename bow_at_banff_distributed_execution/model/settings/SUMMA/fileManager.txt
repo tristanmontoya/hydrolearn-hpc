@@ -3,10 +3,10 @@ simStartTime         '2002-10-01 00:00' !
 simEndTime           '2009-09-30 23:00' !
 tmZoneInfo           'localTime' ! 
 outFilePrefix        'run1' ! 
-settingsPath         '/scratch/csun15/calib/summa_calib/CAN_05BB001/model/settings/SUMMA/' ! 
-forcingPath          '/scratch/csun15/calib/summa_calib/CAN_05BB001/model/forcing/4_SUMMA_input/' ! 
-outputPath           '/scratch/csun15/calib/summa_calib/CAN_05BB001/model/simulations/run1/SUMMA/' ! 
-statePath            '/scratch/csun15/calib/summa_calib/CAN_05BB001/model/settings/SUMMA/states/'
+settingsPath         'model/settings/SUMMA/' ! 
+forcingPath          'model/forcing/4_SUMMA_input/' ! 
+outputPath           'model/simulations/run1/SUMMA/' ! 
+statePath            'model/settings/SUMMA/states/'
 initConditionFile    'coldState.nc' ! Relative to statePath
 attributeFile        'attributes.nc' ! Relative to settingsPath 
 trialParamFile       'trialParams.nc' ! Relative to settingsPath 

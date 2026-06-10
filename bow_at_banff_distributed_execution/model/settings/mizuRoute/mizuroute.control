@@ -12,9 +12,9 @@
 ! ****************************************************************************************************************************
 ! DEFINE DIRECTORIES 
 ! --------------------------
-<ancil_dir>            /scratch/csun15/calib/summa_calib/CAN_05BB001/model/settings/mizuRoute/            ! directory containing ancillary data (runoff mapping data, river network data)
-<input_dir>            /scratch/csun15/calib/summa_calib/CAN_05BB001/model/simulations/run1/SUMMA/        ! directory containing input data (runoff data)
-<output_dir>           /scratch/csun15/calib/summa_calib/CAN_05BB001/model/simulations/run1/mizuRoute/    ! directory containing output data
+<ancil_dir>            model/settings/mizuRoute/            ! directory containing ancillary data (runoff mapping data, river network data)
+<input_dir>            model/simulations/run1/SUMMA/        ! directory containing input data (runoff data)
+<output_dir>           model/simulations/run1/mizuRoute/    ! directory containing output data
 ! ****************************************************************************************************************************
 ! DEFINE SIMULATION CONTROLS 
 ! --------------------------------------------
