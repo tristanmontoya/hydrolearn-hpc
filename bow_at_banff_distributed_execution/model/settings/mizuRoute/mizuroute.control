@@ -20,7 +20,7 @@
 ! --------------------------------------------
 <case_name>             run1                       ! name of simulation 
 <sim_start>             2003-01-01        ! time of simulation start (00:00:00 if hh:mm:ss is not included) 
-<sim_end>               2009-12-31        ! time of simulation end (00:00:00 if hh:mm:ss is not included) 
+<sim_end>               2005-12-31        ! time of simulation end (00:00:00 if hh:mm:ss is not included)
 <route_opt>             1                          ! river routing options: 0-> accumRunoff, 1->IRF, 2->KWT, 3-> KW, 4->MC, 5->DW 
 <doesBasinRoute>        0                          ! basin routing options: 0-> no, 1->IRF, otherwise error
 <newFileFrequency>      yearly                     ! frequency for new output options (case-insensitive): daily, monthly, yearly, or single

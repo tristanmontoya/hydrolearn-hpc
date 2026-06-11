@@ -19,6 +19,14 @@ log_file="${basin_dir}/model_run.log"
 # Allow executable names to be overridden by the environment
 summa_exe="${SUMMA_EXE:-summa.exe}"
 route_exe="${MIZUROUTE_EXE:-mizuRoute.exe}"
+python_exe="${PYTHON:-}"
+if [ -z "${python_exe}" ]; then
+    if command -v python3 >/dev/null 2>&1; then
+        python_exe="python3"
+    else
+        python_exe="python"
+    fi
+fi
 
 # Read a setting from a SUMMA or mizuRoute text configuration file
 read_from_summa_route_config() {
@@ -77,7 +85,7 @@ require_file "${summa_attribute_file}"
 
 # Count GRUs for the SUMMA run script
 n_gru="$(ncks -Cm -v gruId -m "${summa_attribute_file}" \
-    | awk '$1 == "gru" && $2 == "=" {print $3; exit}')"
+    | awk '$1 == "gru" && $2 == "=" {n = $3} END {if (n != "") print n}')"
 if [ -z "${n_gru}" ]; then
     echo "Unable to determine GRU count from ${summa_attribute_file}" >&2
     exit 1
@@ -94,7 +102,7 @@ bash "${summa_run_script}"
 
 # Merge split GRU outputs into one file for routing
 log_step "concatenate summa outputs"
-python "${shared_scripts_path}/concat_summa_ouputs.py" \
+"${python_exe}" "${shared_scripts_path}/concat_summa_ouputs.py" \
     --summa-filemanager "${summa_filemanager}"
 
 # Shift daily SUMMA output times to the mizuRoute convention

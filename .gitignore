@@ -20,5 +20,6 @@ dist/
 __pycache__/
 *.py[cod]
 
-# SUMMA forcing input data (ignoring full file, keeping the 2003-2009 subset)
-**/model/forcing/4_SUMMA_input/CAN_05BB001_em_earth_distributed.nc
+# SUMMA forcing input data (include only the shortened forcing)
+**/model/forcing/4_SUMMA_input/*
+!**/model/forcing/4_SUMMA_input/CAN_05BB001_distributed_2003_2005.nc
