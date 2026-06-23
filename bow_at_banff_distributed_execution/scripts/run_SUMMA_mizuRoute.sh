@@ -81,9 +81,14 @@ route_output_path="$(read_from_summa_route_config \
     "${route_control}" "<output_dir>")"
 route_out_file_prefix="$(read_from_summa_route_config \
     "${route_control}" "<case_name>")"
+route_ancil_path="$(read_from_summa_route_config \
+    "${route_control}" "<ancil_dir>")"
+route_param_nml="$(read_from_summa_route_config \
+    "${route_control}" "<param_nml>")"
 
 # Check if the attribute file exists before trying to read the GRU count
 require_file "${summa_attribute_file}"
+require_file "${route_ancil_path}/${route_param_nml}"
 
 # Count GRUs for the SUMMA run script
 n_gru="$(ncks -Cm -v gruId -m "${summa_attribute_file}" \
@@ -112,6 +117,9 @@ log_step "post-process summa output"
 summa_output_file="${summa_output_path}/${summa_out_file_prefix}_day.nc"
 ncap2 -h -O -s 'time[time]=time-86400' \
     "${summa_output_file}" "${summa_output_file}"
+
+# Place routing parameters where this mizuRoute build reads them
+cp "${route_ancil_path}/${route_param_nml}" "${summa_output_path}/${route_param_nml}"
 
 # Run mizuRoute on the merged SUMMA output
 log_step "run mizuRoute"

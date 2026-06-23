@@ -50,7 +50,7 @@
 <dname_hruid>           gru                       ! name of the HRU dimension (if 1D runoff vector is input) 
 <units_qsim>            m/s                       ! units of runoff depth. Accepted units:  mm/s, mm/hr, mm/day, m/s, m/hr, m/day
 <dt_qsim>               86400                     ! time interval of the runoff [sec] e.g., 86400 sec for daily step
-<calendar>              standard                  ! Calendar of the nc file if not provided in the time variable of the nc file 
+<ro_calendar>           standard                  ! calendar used in the runoff input NetCDF
 ! ****************************************************************************************************************************
 ! DEFINE RUNOFF REMAPPING DATA 
 !  ----------------------------------
@@ -98,7 +98,8 @@
 ! ****************************************************************************************************************************
 ! output options
 ! ---------------------------
-<netcdf_format>         netcdf4                    ! netcdf format for output 'classic','64bit_offset','netcdf4'
+! Use serial NetCDF through PIO for standalone runs
+<pio_netcdf_type>       netcdf                    ! NetCDF backend used by PIO
 <basRunoff>             T                          ! output options
 <instRunoff>            T                          ! output options
 <dlayRunoff>            T                          ! output options
