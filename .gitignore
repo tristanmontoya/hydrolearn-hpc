@@ -2,6 +2,8 @@
 .DS_Store
 .vscode/
 .ipynb_checkpoints/
+.venv/
+venv/
 
 # Compiled and generated build artefacts
 build/
@@ -22,4 +24,4 @@ __pycache__/
 
 # SUMMA forcing input data (include only the shortened forcing)
 **/model/forcing/4_SUMMA_input/*
-!**/model/forcing/4_SUMMA_input/CAN_05BB001_distributed_2003_2005.nc
+!**/model/forcing/4_SUMMA_input/CAN_05BB001_distributed_2002_2005.nc

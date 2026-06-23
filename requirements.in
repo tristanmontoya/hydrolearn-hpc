@@ -1,0 +1,6 @@
+# Top-level Python dependencies for runnable HydroLearn HPC scripts
+matplotlib==3.10.9
+netCDF4==1.7.4
+numpy==2.3.5
+pandas==2.3.3
+xarray==2025.12.0
