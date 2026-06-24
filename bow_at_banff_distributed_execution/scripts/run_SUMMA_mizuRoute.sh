@@ -148,7 +148,7 @@ log_step "calculate diagnostics"
     --sim-file "${route_merged_file}" \
     --obs-file "data/obs_flow.CAN_05BB001.cfs.csv" \
     --output-dir "results" \
-    --start-date "2002-10-01" \
+    --start-date "2003-10-01" \
     --end-date "2005-09-30" \
     --make-plot
 

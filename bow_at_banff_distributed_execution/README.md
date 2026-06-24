@@ -2,7 +2,7 @@
 
 This directory contains a self-contained example for running the SUMMA hydrologic
 model, routing the resulting runoff through mizuRoute, and calculating streamflow
-diagnostics from `2002-10-01` through `2005-09-30`.
+diagnostics from `2003-10-01` through `2005-09-30` (i.e., excluding a one-year startup period).
 
 The example simulates the distributed hydrologic response of the Bow River basin
 in Alberta, Canada, upstream of the Banff streamflow gauge `CAN_05BB001`. The
@@ -15,6 +15,9 @@ The forcing contains precipitation rate, air temperature, air pressure, specific
 humidity, wind speed, incoming shortwave radiation, incoming longwave radiation,
 and HRU coordinates for the 52 HRUs. SUMMA writes daily mean precipitation, daily
 mean air temperature, and daily mean routed runoff for 1096 daily output times.
+The SUMMA file manager extends the run through `2005-10-01 23:00` so shifted
+daily routing labels cover the complete water year through `2005-09-30`. The
+first water year is retained as model startup and excluded from KGE diagnostics.
 
 **mizuRoute** routes the SUMMA daily `averageRoutedRunoff_mean` field through the
 52-segment river network in `model/settings/mizuRoute/topology.nc`. The routing

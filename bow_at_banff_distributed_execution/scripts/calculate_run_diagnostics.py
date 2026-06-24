@@ -57,7 +57,7 @@ def process_command_line() -> argparse.Namespace:
     )
     parser.add_argument(
         "--start-date",
-        default="2002-10-01",
+        default="2003-10-01",
         help="First date included in KGE calculation.",
     )
     parser.add_argument(
