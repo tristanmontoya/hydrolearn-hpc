@@ -7,7 +7,6 @@ import os, sys, argparse
 import netCDF4 as nc
 import numpy as np
 from datetime import datetime
-import concurrent.futures
 from glob import glob
 
 # deifne functions
@@ -178,40 +177,40 @@ if __name__ == '__main__':
                       % gru_var_name)
                 sys.exit()
     
-    # # #### 4. Loop summa output files, parallel reading and serial saving.  
-    # reference: https://docs.python.org/3/library/concurrent.futures.html
+    # # #### 4. Loop summa output files and save them into the merged arrays.
     # print('concatenate outputs')
     # start_time = datetime.now() 
-    args = ([file, gru_vars_num, gru_vars, hru_vars_num, hru_vars] for file in outfilelist)
-    with concurrent.futures.ProcessPoolExecutor() as executor:    
-        for file_i, Dict_i in zip(outfilelist, executor.map(concat_summa_outputs, args)):
-            f = nc.Dataset(file_i) 
+    for file_i in outfilelist:
+        Dict_i = concat_summa_outputs(
+            [file_i, gru_vars_num, gru_vars, hru_vars_num, hru_vars]
+        )
+        f = nc.Dataset(file_i) 
 
-            # Get the gru and hru indices for file_i
-            gruId = list(f.variables['gruId'][:].data)
-            gru_start_idx = gru_list.index(gruId[0])
-            gru_end_idx = gru_list.index(gruId[-1])
+        # Get the gru and hru indices for file_i
+        gruId = list(f.variables['gruId'][:].data)
+        gru_start_idx = gru_list.index(gruId[0])
+        gru_end_idx = gru_list.index(gruId[-1])
 
-            hruId = list(f.variables['hruId'][:].data)
-            hru_start_idx = hru_list.index(hruId[0])
-            hru_end_idx = hru_list.index(hruId[-1])
+        hruId = list(f.variables['hruId'][:].data)
+        hru_start_idx = hru_list.index(hruId[0])
+        hru_end_idx = hru_list.index(hruId[-1])
 
-            # Store Dict_i variables into Dict
-            for j in range(gru_vars_num):
-                gru_var_name = gru_vars[j][0]
-                dim_index = gru_vars[j][1]
-                if dim_index == 0:
-                    Dict[gru_var_name][gru_start_idx:gru_end_idx+1]=Dict_i[gru_var_name]
-                elif dim_index == 1:
-                    Dict[gru_var_name][:,gru_start_idx:gru_end_idx+1]=Dict_i[gru_var_name]
+        # Store Dict_i variables into Dict
+        for j in range(gru_vars_num):
+            gru_var_name = gru_vars[j][0]
+            dim_index = gru_vars[j][1]
+            if dim_index == 0:
+                Dict[gru_var_name][gru_start_idx:gru_end_idx+1]=Dict_i[gru_var_name]
+            elif dim_index == 1:
+                Dict[gru_var_name][:,gru_start_idx:gru_end_idx+1]=Dict_i[gru_var_name]
 
-            for j in range(hru_vars_num):
-                hru_var_name = hru_vars[j][0]
-                dim_index = hru_vars[j][1]
-                if dim_index == 0:
-                    Dict[hru_var_name][hru_start_idx:hru_end_idx+1]=Dict_i[hru_var_name]
-                elif dim_index == 1:
-                    Dict[hru_var_name][:,hru_start_idx:hru_end_idx+1]=Dict_i[hru_var_name]
+        for j in range(hru_vars_num):
+            hru_var_name = hru_vars[j][0]
+            dim_index = hru_vars[j][1]
+            if dim_index == 0:
+                Dict[hru_var_name][hru_start_idx:hru_end_idx+1]=Dict_i[hru_var_name]
+            elif dim_index == 1:
+                Dict[hru_var_name][:,hru_start_idx:hru_end_idx+1]=Dict_i[hru_var_name]
     # print(datetime.now() - start_time)
 
     # # #### 5. Write output    

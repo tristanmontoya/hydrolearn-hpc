@@ -1,30 +1,38 @@
-# Bow River at Banff distributed execution
+# Bow River at Banff: distributed model execution
 
 This directory contains a self-contained example for running the SUMMA hydrologic
 model, routing the resulting runoff through mizuRoute, and calculating streamflow
-diagnostics from `2003-10-01` through `2005-09-30` (i.e., excluding a one-year startup period).
+diagnostics. The example simulates the distributed hydrologic response of the Bow
+River basin in Alberta, Canada, upstream of the Banff streamflow gauge
+`CAN_05BB001`. The SUMMA domain contains 52 grouped response units (GRUs), each
+consisting of a single hydrologic response unit (HRU).
 
-The example simulates the distributed hydrologic response of the Bow River basin
-in Alberta, Canada, upstream of the Banff streamflow gauge `CAN_05BB001`. The
-SUMMA domain contains 52 grouped response units (GRUs), each consisting of a
-single hydrological response unit (HRU), defined in
-`model/settings/SUMMA/attributes.nc`.
+**SUMMA** is forced at an hourly time step by
+`CAN_05BB001_era5_distributed_2002_2009.nc`, a cropped copy of the public
+[CAMELS-SPAT ERA5 distributed forcing][can-era5] for basin `CAN_05BB001`. In the
+FRDR CAMELS-SPAT dataset, the source file is stored under the dataset root at
+`forcing/macro-scale/era5/era5-distributed/CAN_05BB001_era5_distributed.nc`.
 
-**SUMMA** is forced at an hourly time step by `CAN_05BB001_distributed_2002_2005.nc`.
+[can-era5]: https://www.frdr-dfdr.ca/repo/files/1/published/publication_1301/submitted_data/forcing/macro-scale/era5/era5-distributed/CAN_05BB001_era5_distributed.nc
+
 The forcing contains precipitation rate, air temperature, air pressure, specific
-humidity, wind speed, incoming shortwave radiation, incoming longwave radiation,
-and HRU coordinates for the 52 HRUs. SUMMA writes daily mean precipitation, daily
-mean air temperature, and daily mean routed runoff for 1096 daily output times.
-The SUMMA file manager extends the run through `2005-10-01 23:00` so shifted
-daily routing labels cover the complete water year through `2005-09-30`. The
-first water year is retained as model startup and excluded from KGE diagnostics.
+humidity, wind speed, incoming shortwave radiation, and incoming longwave
+radiation. The cropped local file spans `2002-10-01 00:00` through
+`2009-10-01 23:00`; the full public source file spans `1949-12-31 17:00`
+through `2023-01-03 16:00`. This configured example uses the window from
+`2002-10-01 00:00` through `2005-10-01 23:00`. SUMMA writes daily mean
+precipitation, daily mean air temperature, and daily mean routed runoff for 1096
+daily output times.
 
 **mizuRoute** routes the SUMMA daily `averageRoutedRunoff_mean` field through the
 52-segment river network in `model/settings/mizuRoute/topology.nc`. The routing
 configuration uses the impulse response function option, daily runoff input with a
-86400 second (one day) time step, and no basin routing or runoff remapping. The
-diagnostics script evaluates `IRFroutedRunoff` from the first routed segment
-against the observed `CAN_05BB001` streamflow record.
+86400 second (one day) time step, and no basin routing or runoff remapping.
+
+The diagnostics script compares the simulated mizuRoute streamflow against the
+observed `CAN_05BB001` streamflow record, and writes the Kling-Gupta efficiency
+(KGE) to `results/KGE.txt`. The first water year (`2002-10-01` to `2003-09-30`)
+is excluded from the KGE calculation due to the model's spin-up period.
 
 ## Layout
 
@@ -72,8 +80,9 @@ to `model/simulations/run1/SUMMA/`, and mizuRoute writes to
   times from SUMMA's period-ending daily means to mizuRoute's start-of-period
   routing convention, runs mizuRoute, merges routed outputs, and calculates
   diagnostics.
-- `summa_run.sh` runs each GRU sequentially using the SUMMA executable selected by
-  `SUMMA_EXE`, or `summa.exe` from `PATH` by default.
+- `summa_run.sh` is called by `run_SUMMA_mizuRoute.sh` and runs each GRU
+  sequentially using the SUMMA executable selected by `SUMMA_EXE`, or
+  `summa.exe` from `PATH` by default.
 - `calculate_run_diagnostics.py` writes `KGE.txt`, `streamflow_simulated.csv`, and
   `obs_vs_sim.png` from the merged mizuRoute output.
 

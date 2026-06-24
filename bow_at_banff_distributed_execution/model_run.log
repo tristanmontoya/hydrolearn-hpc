@@ -1,0 +1,11 @@
+Wed Jun 24 00:20:16 EDT 2026: run summa
+Wed Jun 24 00:28:12 EDT 2026: concatenate summa outputs
+Wed Jun 24 00:32:30 EDT 2026: continue from concatenate with /Users/tristanmontoya/.virtualenvs/global/bin/python
+Wed Jun 24 00:32:30 EDT 2026: post-process, run mizuRoute, merge outputs, calculate diagnostics
+Wed Jun 24 00:32:30 EDT 2026: done with model run
+Wed Jun 24 10:37:50 EDT 2026: run summa
+Wed Jun 24 10:44:47 EDT 2026: concatenate summa outputs
+Wed Jun 24 10:44:47 EDT 2026: post-process summa output
+Wed Jun 24 10:44:47 EDT 2026: run mizuRoute
+Wed Jun 24 10:44:48 EDT 2026: calculate diagnostics
+Wed Jun 24 10:44:55 EDT 2026: done with model run

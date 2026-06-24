@@ -12,15 +12,15 @@
 ! ****************************************************************************************************************************
 ! DEFINE DIRECTORIES 
 ! --------------------------
-<ancil_dir>            model/settings/mizuRoute/            ! directory containing ancillary data (runoff mapping data, river network data)
-<input_dir>            model/simulations/run1/SUMMA/        ! directory containing input data (runoff data)
-<output_dir>           model/simulations/run1/mizuRoute/    ! directory containing output data
+<ancil_dir>            ./model/settings/mizuRoute/            ! directory containing ancillary data (runoff mapping data, river network data)
+<input_dir>            ./model/simulations/run1/SUMMA/        ! directory containing input data (runoff data)
+<output_dir>           ./model/simulations/run1/mizuRoute/    ! directory containing output data
 ! ****************************************************************************************************************************
 ! DEFINE SIMULATION CONTROLS 
 ! --------------------------------------------
 <case_name>             run1                       ! name of simulation 
 <sim_start>             2002-10-01        ! time of simulation start (00:00:00 if hh:mm:ss is not included) 
-<sim_end>               2005-09-30        ! time of simulation end (00:00:00 if hh:mm:ss is not included)
+<sim_end>               2005-09-30        ! time of simulation end (00:00:00 if hh:mm:ss is not included) 
 <route_opt>             1                          ! river routing options: 0-> accumRunoff, 1->IRF, 2->KWT, 3-> KW, 4->MC, 5->DW 
 <doesBasinRoute>        0                          ! basin routing options: 0-> no, 1->IRF, otherwise error
 <newFileFrequency>      yearly                     ! frequency for new output options (case-insensitive): daily, monthly, yearly, or single
@@ -50,7 +50,7 @@
 <dname_hruid>           gru                       ! name of the HRU dimension (if 1D runoff vector is input) 
 <units_qsim>            m/s                       ! units of runoff depth. Accepted units:  mm/s, mm/hr, mm/day, m/s, m/hr, m/day
 <dt_qsim>               86400                     ! time interval of the runoff [sec] e.g., 86400 sec for daily step
-<ro_calendar>           standard                  ! calendar used in the runoff input NetCDF
+<calendar>              standard                  ! Calendar of the nc file if not provided in the time variable of the nc file 
 ! ****************************************************************************************************************************
 ! DEFINE RUNOFF REMAPPING DATA 
 !  ----------------------------------
@@ -98,8 +98,7 @@
 ! ****************************************************************************************************************************
 ! output options
 ! ---------------------------
-! Use serial NetCDF through PIO for standalone runs
-<pio_netcdf_type>       netcdf                    ! NetCDF backend used by PIO
+<netcdf_format>         netcdf4                    ! netcdf format for output 'classic','64bit_offset','netcdf4'
 <basRunoff>             T                          ! output options
 <instRunoff>            T                          ! output options
 <dlayRunoff>            T                          ! output options

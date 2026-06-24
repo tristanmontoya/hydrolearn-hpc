@@ -24,4 +24,8 @@ __pycache__/
 
 # SUMMA forcing input data (include only the shortened forcing)
 **/model/forcing/4_SUMMA_input/*
-!**/model/forcing/4_SUMMA_input/CAN_05BB001_distributed_2002_2005.nc
+!**/model/forcing/4_SUMMA_input/CAN_05BB001_era5_distributed_2002_2009.nc
+
+# Original reference files
+CAN_05BB001_distributed/
+bow_at_banff_distributed_execution_backup_*/
