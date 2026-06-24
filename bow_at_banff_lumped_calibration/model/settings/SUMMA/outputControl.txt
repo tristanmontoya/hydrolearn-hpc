@@ -1,0 +1,23 @@
+k_soil                    | timestep | mean
+theta_sat                 | timestep | mean
+aquiferBaseflowExp        | timestep | mean
+aquiferBaseflowRate       | timestep | mean
+qSurfScale                | timestep | mean
+summerLAI                 | timestep | mean
+frozenPrecipMultip        | timestep | mean
+routingGammaScale         | timestep | mean
+routingGammaShape         | timestep | mean
+Fcapil                    | timestep | mean
+tempCritRain              | timestep | mean
+heightCanopyTop           | timestep | mean
+heightCanopyBottom        | timestep | mean
+windReductionParam        | timestep | mean
+vGn_n                     | timestep | mean
+theta_res                 | timestep | mean
+critSoilWilting           | timestep | mean
+critSoilTranspire         | timestep | mean
+fieldCapacity             | timestep | mean
+! varName          | outFreq | sum | inst | mean | var | min | max | mode
+pptrate            | 24  |  mean
+airtemp            | 24  |  mean
+averageRoutedRunoff   | 24  |  mean
