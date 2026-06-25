@@ -18,16 +18,9 @@ diagnostics_script="${script_dir}/calculate_run_diagnostics.py"
 log_file="${basin_dir}/model_run.log"
 
 # Allow executable names to be overridden by the environment
+python_exe="${PYTHON:-python}"
 summa_exe="${SUMMA_EXE:-summa.exe}"
 route_exe="${MIZUROUTE_EXE:-mizuRoute.exe}"
-python_exe="${PYTHON:-}"
-if [ -z "${python_exe}" ]; then
-    if command -v python3 >/dev/null 2>&1; then
-        python_exe="python3"
-    else
-        python_exe="python"
-    fi
-fi
 
 # Read a setting from a SUMMA or mizuRoute text configuration file
 read_from_summa_route_config() {

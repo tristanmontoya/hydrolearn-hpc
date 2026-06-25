@@ -30,7 +30,7 @@ bow_at_banff_lumped_calibration/
 `ostIn.txt` runs `scripts/run_trial.sh` with ParallelDDS for 40 evaluations, optimizes a KGE-based objective, and preserves the best trial with `scripts/save_best.sh`.
 `ostrich/` contains the multiplier template and initial multiplier values.
 
-`scripts/run_parallel_ostrich.sh` submits the default Slurm job with four OSTRICH MPI tasks across the two VM worker nodes.
+`scripts/run_ostrich.sh` submits the default Slurm job with four OSTRICH MPI tasks across the two VM worker nodes.
 
 `output_archive/` is created at run time and contains the best `trialParams.nc`, `run1_day.nc`, diagnostics, multiplier files, and OSTRICH logs.
 
@@ -62,7 +62,7 @@ Submit the ParallelDDS calibration from the case directory:
 
 ```sh
 cd /workspace/hydrolearn-hpc/bow_at_banff_lumped_calibration
-sbatch scripts/run_parallel_ostrich.sh
+sbatch scripts/run_ostrich.sh
 ```
 
 Check job state with:
@@ -78,4 +78,4 @@ cat output_archive/KGE.txt
 ls output_archive
 ```
 
-The Slurm script assumes it is submitted from the case directory and uses `python`, `summa.exe`, and `OstrichMPI` from the VM `PATH`.
+The Slurm script assumes it is submitted from the case directory. It uses `PYTHON` and `SUMMA_EXE` when set, otherwise `python` and `summa.exe`. The `OstrichMPI` executable is expected on `PATH`.
