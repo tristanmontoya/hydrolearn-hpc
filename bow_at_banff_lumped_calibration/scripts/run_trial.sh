@@ -4,24 +4,12 @@ set -euo pipefail
 # Resolve the basin directory from this trial script location
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 basin_dir="$(cd "${script_dir}/.." && pwd -P)"
-repo_dir="$(cd "${basin_dir}/.." && pwd -P)"
 
 # Use the basin directory as the base for relative model paths
 cd "${basin_dir}"
 
-# Select the repository Python environment when available
-python_exe="${PYTHON:-}"
-if [ -z "${python_exe}" ]; then
-    if [ -x "${repo_dir}/.venv/bin/python" ]; then
-        python_exe="${repo_dir}/.venv/bin/python"
-    elif command -v python3 >/dev/null 2>&1; then
-        python_exe="python3"
-    else
-        python_exe="python"
-    fi
-fi
-
 # Define local calibration paths
+python_exe="${PYTHON:-python}"
 summa_exe="${SUMMA_EXE:-summa.exe}"
 summa_filemanager="model/settings/SUMMA/fileManager.txt"
 summa_settings_path="model/settings/SUMMA"
@@ -33,13 +21,15 @@ stat_output="results/KGE.txt"
 log_file="${basin_dir}/model_run.log"
 failed_kge="-999.000000"
 
+# Ensure failed trials can write the objective file before diagnostics run
+mkdir -p "${stat_output%/*}"
+
 # Read a setting from a SUMMA text configuration file
 read_from_summa_config() {
     local input_file="$1"
     local setting="$2"
     local line
     local info
-
     line="$(grep -m 1 "^${setting}" "${input_file}")"
     info="${line%%!*}"
     info="$(printf '%s\n' "${info}" | cut -d ' ' -f 2- | xargs)"

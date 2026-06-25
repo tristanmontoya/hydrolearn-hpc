@@ -44,9 +44,10 @@ Run the model from this directory:
 ./scripts/run_SUMMA_mizuRoute.sh
 ```
 
-The command assumes that `summa.exe`, `mizuRoute.exe`, and NCO tools (`ncks`, `ncap2`, and `ncrcat`) are available. Override executable paths when needed:
+The command assumes that `python`, `summa.exe`, `mizuRoute.exe`, and NCO tools (`ncks`, `ncap2`, and `ncrcat`) are available. Override executable paths when needed:
 
 ```sh
+PYTHON=/path/to/python \
 SUMMA_EXE=/path/to/summa.exe \
 MIZUROUTE_EXE=/path/to/mizuRoute.exe \
 ./scripts/run_SUMMA_mizuRoute.sh

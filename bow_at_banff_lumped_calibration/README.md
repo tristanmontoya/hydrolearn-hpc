@@ -44,8 +44,4 @@ Run the calibration from this directory:
 ./scripts/run_ostrich.sh
 ```
 
-The runner defaults to `ostrich` and `summa.exe` from `PATH`. Override them when needed:
-
-```sh
-OSTRICH_EXE=/path/to/ostrich SUMMA_EXE=/path/to/summa.exe ./scripts/run_ostrich.sh
-```
+The runner uses `PYTHON` and `SUMMA_EXE` when set, otherwise `python` and `summa.exe`. The `ostrich` executable is expected on `PATH`.

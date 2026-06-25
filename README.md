@@ -23,7 +23,7 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Scripts use the `PYTHON` environment variable when it is set; otherwise they choose a default Python executable. External executables can be overridden with `SUMMA_EXE`, `MIZUROUTE_EXE`, and `OSTRICH_EXE`.
+Scripts use `PYTHON` when set, otherwise `python`. SUMMA scripts use `SUMMA_EXE` when set, otherwise `summa.exe`; the distributed routing script also supports `MIZUROUTE_EXE`.
 
 ## Acknowledgements
 
