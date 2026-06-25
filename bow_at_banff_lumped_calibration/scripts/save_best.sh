@@ -4,6 +4,7 @@ set -euo pipefail
 # Resolve the basin directory from this archive script location
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 basin_dir="$(cd "${script_dir}/.." && pwd -P)"
+case_dir="${PARALLEL_CALIBRATION_ROOT:-${basin_dir}}"
 
 # Use the basin directory as the base for relative model paths
 cd "${basin_dir}"
@@ -11,7 +12,7 @@ cd "${basin_dir}"
 # Define local model and output paths
 summa_filemanager="model/settings/SUMMA/fileManager.txt"
 trial_param_file="model/settings/SUMMA/trialParams.nc"
-output_archive="output_archive"
+output_archive="${case_dir}/output_archive"
 results_dir="results"
 
 # Read a setting from the SUMMA file manager
@@ -48,7 +49,6 @@ if [ -f "${summa_day_file}" ]; then
     cp -p "${summa_day_file}" "${output_archive}/"
 fi
 
-shopt -s nullglob
 for output_file in "${results_dir}/KGE.txt" \
     "${results_dir}/streamflow_simulated.csv" \
     "${results_dir}/obs_vs_sim.png" \
@@ -59,4 +59,3 @@ for output_file in "${results_dir}/KGE.txt" \
         cp -p "${output_file}" "${output_archive}/"
     fi
 done
-shopt -u nullglob

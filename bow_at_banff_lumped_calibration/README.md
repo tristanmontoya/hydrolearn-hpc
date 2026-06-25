@@ -1,8 +1,8 @@
-# Bow River at Banff lumped calibration
+# Bow River at Banff parallel lumped calibration
 
-This directory contains the current local OSTRICH calibration case for a lumped SUMMA model of the Bow River basin upstream of the Banff streamflow gauge `CAN_05BB001`. The SUMMA domain contains one grouped response unit (GRU) and one hydrologic response unit (HRU).
+This directory contains the ParallelDDS OSTRICH calibration case for a lumped SUMMA model of the Bow River basin upstream of the Banff streamflow gauge `CAN_05BB001`. The SUMMA domain contains one grouped response unit (GRU) and one hydrologic response unit (HRU).
 
-The case requires external `ostrich` and `summa.exe` executables. See the top-level README for tested executable versions.
+The case is intended for the `vhpc-hydrotools` Slurm virtual machine. That environment provides Slurm, OpenMPI, Python, `OstrichMPI`, and `summa.exe` on `PATH`. See the top-level README for tested executable versions.
 
 ## Layout
 
@@ -16,8 +16,6 @@ bow_at_banff_lumped_calibration/
 │   ├── shapefiles/
 │   └── simulations/
 ├── ostrich/
-├── output_archive/
-├── results/
 └── scripts/
 ```
 
@@ -27,25 +25,57 @@ bow_at_banff_lumped_calibration/
 
 `model/settings/SUMMA/` contains the SUMMA configuration, attributes, parameter tables, state files, and trial parameter files.
 
-`model/simulations/run1/SUMMA/` contains the current SUMMA output files used by the diagnostics script.
+`model/simulations/run1/SUMMA/` is regenerated inside each OSTRICH worker directory.
 
-`ostIn.txt` runs `scripts/run_trial.sh` with DDS for 20 iterations, optimizes a KGE-based objective, and preserves the best trial with `scripts/save_best.sh`.
-`ostrich/` contains the multiplier template and current multiplier values.
+`ostIn.txt` runs `scripts/run_trial.sh` with ParallelDDS for 40 evaluations, optimizes a KGE-based objective, and preserves the best trial with `scripts/save_best.sh`.
+`ostrich/` contains the multiplier template and initial multiplier values.
 
-`results/` contains diagnostics from the latest completed run. The bundled results have KGE `0.545978` over `2003-10-01` through `2005-09-30`.
+`scripts/run_parallel_ostrich.sh` submits the default Slurm job with four OSTRICH MPI tasks across the two VM worker nodes.
 
-`output_archive/` contains the best-trial archive written by `scripts/save_best.sh`, including the best `trialParams.nc`, `run1_day.nc`, diagnostics, multiplier files, and OSTRICH logs.
+`output_archive/` is created at run time and contains the best `trialParams.nc`, `run1_day.nc`, diagnostics, multiplier files, and OSTRICH logs.
 
-## Local calibration
+## Slurm calibration
 
-Run the calibration from this directory:
-
-```sh
-./scripts/run_ostrich.sh
-```
-
-The runner defaults to `ostrich` and `summa.exe` from `PATH`. Override them when needed:
+Start the virtual cluster from the `vhpc-hydrotools` repository:
 
 ```sh
-OSTRICH_EXE=/path/to/ostrich SUMMA_EXE=/path/to/summa.exe ./scripts/run_ostrich.sh
+cd ../vhpc-hydrotools
+docker compose up -d
 ```
+
+Log in to the head node:
+
+```sh
+ssh -p 2222 user@localhost
+```
+
+The VM stores the course repository in a named Docker volume at `/workspace/hydrolearn-hpc`. If the VM workspace was seeded before this branch existed, update that checkout before submitting the job:
+
+```sh
+cd /workspace/hydrolearn-hpc
+git fetch origin
+git checkout parallelize_lumped_calibration
+git pull --ff-only
+```
+
+Submit the ParallelDDS calibration from the case directory:
+
+```sh
+cd /workspace/hydrolearn-hpc/bow_at_banff_lumped_calibration
+sbatch scripts/run_parallel_ostrich.sh
+```
+
+Check job state with:
+
+```sh
+squeue
+```
+
+After the job completes, inspect the best archived trial:
+
+```sh
+cat output_archive/KGE.txt
+ls output_archive
+```
+
+The Slurm script assumes it is submitted from the case directory and uses `python`, `summa.exe`, and `OstrichMPI` from the VM `PATH`.

@@ -2618,35 +2618,35 @@ Skipping over SLTYPE = STAS-RUC
 2009  9 29  0  0
 2009  9 30  0  0
 
-initial date/time = 2026-06-24  17:49:56.518
-  final date/time = 2026-06-24  17:50:26.215
+initial date/time = 2026-06-25  18:10:01.820
+  final date/time = 2026-06-25  18:10:16.881
 
-     elapsed init =   5.0000000E-03 s
-    fraction init =   1.6836718E-04
+     elapsed init =   2.2000000E-02 s
+    fraction init =   1.4607264E-03
 
     elapsed setup =   4.0000000E-03 s
-   fraction setup =   1.3469374E-04
+   fraction setup =   2.6558661E-04
 
   elapsed restart =    0.000000     s
  fraction restart =    0.000000    
 
-     elapsed read =    4.859000     s
-    fraction read =   0.1636192    
+     elapsed read =    1.517000     s
+    fraction read =   0.1007237    
 
-    elapsed write =    3.760000     s
-   fraction write =   0.1266121    
+    elapsed write =   0.4060000     s
+   fraction write =   2.6957041E-02
 
-  elapsed physics =    10.98400     s
- fraction physics =   0.3698690    
+  elapsed physics =    13.05800     s
+ fraction physics =   0.8670075    
 
-     elapsed time =    29.69700     s
-       or             0.4949500     m
-       or             8.2491667E-03 h
-       or             3.4371528E-04 d
+     elapsed time =    15.06100     s
+       or             0.2510167     m
+       or             4.1836111E-03 h
+       or             1.7431713E-04 d
 
    number threads =          1
 
  FORTRAN STOP: finished simulation successfully.
 --- calculate diagnostics ---
-INFO: KGE = 0.545978
+INFO: KGE = -0.089046
 --- done with calibration trial ---

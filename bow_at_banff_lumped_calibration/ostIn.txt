@@ -1,7 +1,8 @@
 # Ostrich configuration file
 
-ProgramType  DDS
+ProgramType  ParallelDDS
 ModelExecutable ./scripts/run_trial.sh
+ModelSubdir ostrich_worker_
 ObjectiveFunction gcop
 
 OstrichWarmStart no
@@ -13,6 +14,13 @@ OnObsError	-999
 BeginFilePairs
 ostrich/multipliers.tpl ; ostrich/multipliers.txt
 EndFilePairs
+
+BeginExtraDirs
+data
+model
+ostrich
+scripts
+EndExtraDirs
 
 #Parameter/DV Specification
 BeginParams
@@ -56,9 +64,9 @@ EndConstraints
 # Random seed control
 RandomSeed 721734144
 
-BeginDDSAlg
+BeginParallelDDSAlg
 PerturbationValue 0.20
-MaxIterations 20
-#UseRandomParamValues
+MaxIterations 40
 UseInitialParamValues
-EndDDSAlg
+UseOpt standard
+EndParallelDDSAlg

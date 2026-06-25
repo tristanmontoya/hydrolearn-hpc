@@ -33,6 +33,9 @@ stat_output="results/KGE.txt"
 log_file="${basin_dir}/model_run.log"
 failed_kge="-999.000000"
 
+# Ensure failed trials can write the objective file before diagnostics run
+mkdir -p "${stat_output%/*}"
+
 # Read a setting from a SUMMA text configuration file
 read_from_summa_config() {
     local input_file="$1"
