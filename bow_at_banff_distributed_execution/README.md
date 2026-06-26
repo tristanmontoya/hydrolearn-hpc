@@ -1,4 +1,4 @@
-# Bow River at Banff: distributed model execution
+# Bow River at Banff: Distributed Model Execution
 
 This directory contains the serial SUMMA and mizuRoute example for the distributed Bow River basin upstream of the Banff streamflow gauge `CAN_05BB001`. The SUMMA domain contains 52 grouped response units (GRUs), each with one hydrologic response unit (HRU).
 
@@ -36,7 +36,7 @@ bow_at_banff_distributed_execution/
 
 `scripts/run_SUMMA_mizuRoute.sh` runs SUMMA, concatenates SUMMA output, shifts daily times for mizuRoute, runs mizuRoute, merges routed output, and writes diagnostics. `scripts/summa_run.sh` runs the 52 GRUs serially.
 
-## Serial execution
+## Serial Execution
 
 Run the model from this directory:
 

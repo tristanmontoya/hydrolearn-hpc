@@ -1,8 +1,10 @@
-# Bow River at Banff parallel lumped calibration
+# Bow River at Banff Parallel Lumped Calibration
 
-This directory contains the ParallelDDS OSTRICH calibration case for a lumped SUMMA model of the Bow River basin upstream of the Banff streamflow gauge `CAN_05BB001`. The SUMMA domain contains one grouped response unit (GRU) and one hydrologic response unit (HRU).
+This directory contains the `ParallelDDS` OSTRICH calibration case for a lumped SUMMA model of the Bow River basin upstream of the Banff streamflow gauge `CAN_05BB001`. The SUMMA domain contains one grouped response unit (GRU) and one hydrologic response unit (HRU).
 
 The case is intended for the `vhpc-hydrotools` Slurm virtual machine. That environment provides Slurm, OpenMPI, Python, `OstrichMPI`, and `summa.exe` on `PATH`. See the top-level README for tested executable versions.
+
+The assignment instructions are in `ASSIGNMENT.md`.
 
 ## Layout
 
@@ -27,14 +29,13 @@ bow_at_banff_lumped_calibration/
 
 `model/simulations/run1/SUMMA/` is regenerated inside each OSTRICH worker directory.
 
-`ostIn.txt` runs `scripts/run_trial.sh` with ParallelDDS for 40 evaluations, optimizes a KGE-based objective, and preserves the best trial with `scripts/save_best.sh`.
-`ostrich/` contains the multiplier template and initial multiplier values.
+`ostIn.txt` runs `scripts/run_trial.sh` with `ParallelDDS` for 40 evaluations, optimizes a KGE-based objective, and preserves the best trial with `scripts/save_best.sh`. `ostrich/` contains the multiplier template and initial multiplier values.
 
-`scripts/run_ostrich.sh` submits a Slurm strong-scaling job with 1, 2, 4, and 8 OSTRICH MPI tasks.
+`scripts/run_ostrich.sh` submits a Slurm strong-scaling job with 1, 2, and 4 model-evaluation workers. Each run requests one additional OSTRICH MPI task for the coordinator rank.
 
 `output_archive/` is created at run time and contains the best `trialParams.nc`, `run1_day.nc`, diagnostics, multiplier files, and OSTRICH logs.
 
-## Slurm calibration
+## Slurm Calibration
 
 Start the virtual cluster from the `vhpc-hydrotools` repository:
 
@@ -58,7 +59,7 @@ git checkout parallelize_lumped_calibration
 git pull --ff-only
 ```
 
-Submit the ParallelDDS calibration from the case directory:
+Submit the `ParallelDDS` calibration from the case directory:
 
 ```sh
 cd /workspace/hydrolearn-hpc/bow_at_banff_lumped_calibration
