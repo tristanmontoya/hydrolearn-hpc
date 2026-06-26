@@ -1,29 +1,8 @@
 # Activity 2: Parallel Calibration of a Lumped Hydrologic Model
 
-This activity focuses on the parallel calibration of a lumped hydrologic model using the OSTRICH (Optimization Software Toolkit for Research Involving Computational Heuristics) framework. OSTRICH supports a range of optimization algorithms commonly used in hydrology. In this activity, the Asynchronous Parallel Dynamically Dimensioned Search (`ParallelDDS`) algorithm is used.
+In this activity, you will take the role of a **research computing specialist advising a hydrology research group**. You will start from a serial calibration workflow for a lumped hydrologic model, and you will convert it to a parallel workflow that uses **Slurm** and **MPI**. You will then run a simple scaling test to evaluate the performance of the parallel workflow, and you will write a memo to the research group that summarizes your work and provides recommendations for future use of the parallel workflow.
 
-`ParallelDDS` generates multiple candidate parameter sets during the optimization. Each candidate must be evaluated by running the hydrologic model, and these simulations are independent of one another. This allows the model evaluations to be executed in parallel, reducing calibration time.
-
-Due to the large number of iterations required, this activity uses a simplified modeling setup:
-
-- The model is configured in lumped form, where all spatial units are aggregated into a single basin representation.
-- The routing component is removed, since explicit channel routing is not required in lumped models. To compute basin runoff, contributions from all GRUs are summed using area-weighted aggregation.
-
-This activity also uses a multiplier-based parameterization approach, where model parameters are represented as dimensionless multipliers applied to default parameter values. This approach helps maintain physically consistent parameters while allowing efficient exploration of the parameter space during calibration.
-
-## Learning Objectives
-
-By the end of this activity, you should be able to:
-
-- Convert a serial OSTRICH DDS calibration into a `ParallelDDS` calibration.
-- Explain why parallel OSTRICH model runs need separate worker directories.
-- Submit an OSTRICH MPI calibration through Slurm.
-- Measure and interpret a simple strong-scaling experiment.
-- Identify practical reasons why parallel speedup is not usually ideal.
-
-## Memo Deliverable
-
-Complete the technical work below and submit one memo written from the perspective of a research computing specialist advising a hydrology research group. Keep the memo practical and concise. Use the following sections:
+**Deliverable:** Complete the technical work below and submit one practical, concise memo with the following sections:
 
 1. *Current Serial Workflow*
 2. *Parallelization Plan*
@@ -32,7 +11,13 @@ Complete the technical work below and submit one memo written from the perspecti
 5. *Recommendation and Reflection*
 6. *Reproducibility Appendix*
 
-## Part 1: Inspect the Serial Calibration Workflow
+The memo should be a single document that addresses all of the deliverables above, either as a **Markdown file** or a **PDF created using LaTeX**. The following steps will guide you through the technical work required to complete this activity, and will describe the deliverables for each section of your memo.
+
+## Step 1: Inspect the Serial Calibration Workflow
+
+This activity uses **OSTRICH** (Optimization Software Toolkit for Research Involving Computational Heuristics) to calibrate a lumped model for the Bow River basin upstream of the Banff streamflow gauge based on the **SUMMA** (Structure for Unifying Multiple Modeling Alternatives) hydrologic model. The starting point is a serial calibration workflow that uses the Dynamically Dimensioned Search (`DDS`) algorithm.
+
+The model setup is simplified so that the calibration runs quickly enough for an instructional scaling test. The SUMMA model is configured in lumped form, where all spatial units are aggregated into a single basin representation. The routing component is removed because explicit channel routing is not required in the lumped model.
 
 If you are using the `vhpc-hydrotools` virtual cluster, change into the repository checkout:
 ```sh
@@ -46,28 +31,23 @@ git clone https://github.com/tristanmontoya/hydrolearn-hpc.git
 cd hydrolearn-hpc
 ```
 
-The `main` branch contains a working serial calibration workflow. Create a working branch for your parallel version:
+The `main` branch contains a working calibration workflow configured to use the serial DDS algorithm, which evaluates one candidate parameter set at a time. Before editing anything, it is important to understand the structure of the serial program. First, change into the case directory:
 
 ```sh
-git checkout main
-git pull
-git checkout -b parallelize_lumped_calibration
 cd bow_at_banff_lumped_calibration
 ```
 
-Before editing anything, inspect the serial workflow. You can use the `less` command to view the following files:
-
-```sh
-less README.md
-less ostIn.txt
-less scripts/run_ostrich.sh
-less scripts/run_trial.sh
-less scripts/save_best.sh
+The following files are particularly relevant:
+```
+ostIn.txt
+scripts/run_ostrich.sh
+scripts/run_trial.sh
+scripts/save_best.sh
 ```
 
 The file `ostIn.txt` defines the OSTRICH calibration workflow, which currently uses `ProgramType DDS`, meaning that the serial dynamic dimensioned search algorithm is used. The `ModelExecutable` line points to `scripts/run_trial.sh`, which runs the SUMMA model and writes the objective function value to `results/KGE.txt`. The `PreserveBestModel` line points to `scripts/save_best.sh`, which copies the best trial parameter file and simulation output to the `output_archive/` directory.
 
-The serial executable `ostrich` is launched by `scripts/run_ostrich.sh`:
+The `scripts/run_ostrich.sh` shell script runs the entire workflow. It simply sets up the environment variables so the workflow can find the Python interpreter, SUMMA executable, and the current working directory, then launches the serial `ostrich` executable, which reads the `ostIn.txt` file and performs the calibration. The script is shown below:
 
 ```sh
 #!/usr/bin/env bash
@@ -80,39 +60,27 @@ export PARALLEL_CALIBRATION_ROOT="${PWD}"
 ostrich
 ```
 
-Your goal is to modify this serial workflow so that it runs `ParallelDDS` through Slurm and `OstrichMPI`. Find these settings in the serial `ostIn.txt`:
+Your goal is to modify this serial workflow so that it runs `ParallelDDS` through Slurm and `OstrichMPI`. At this stage, focus on the structure of the serial workflow: OSTRICH chooses a candidate parameter set, `run_trial.sh` evaluates that candidate by running SUMMA and calculating KGE, and OSTRICH uses the result to choose the next candidate.
 
-```text
-ProgramType  DDS
-ModelExecutable ./scripts/run_trial.sh
-PreserveBestModel ./scripts/save_best.sh
-```
-
-Then find the serial DDS algorithm block:
-
-```text
-BeginDDSAlg
-PerturbationValue 0.20
-MaxIterations 40
-UseInitialParamValues
-EndDDSAlg
-```
-
-**Deliverable:** the *Current Serial Workflow* section of your memo must address the following questions:
+**Deliverable:** the *Current Serial Workflow* section of your memo must provide a high-level overview of the workflow and address the following questions:
 - Why can't the serial `DDS` algorithm be parallelized across optimization iterations?
 - What opportunities still exist for parallelism when the optimization algorithm itself is serial?
 - What, conceptually, must change in the optimization method to allow parallelism across optimization iterations?
 
-## Part 2: Convert `ostIn.txt` to `ParallelDDS`
+## Step 2: Convert `ostIn.txt` to `ParallelDDS`
 
-Open `ostIn.txt` and change the program type from serial DDS to `ParallelDDS`:
+`ParallelDDS` is the OSTRICH parallel version of DDS. It can generate multiple candidate parameter sets during the optimization. Each candidate must still be evaluated by running SUMMA and calculating the objective function, but those model evaluations are independent of one another and can be assigned to separate MPI worker ranks.
+
+Open `ostIn.txt`. The serial file needs three kinds of changes: select the parallel DDS algorithm, tell OSTRICH how to create worker directories, and replace the serial DDS algorithm block with the `ParallelDDS` block.
+
+First, change the program type from serial DDS to `ParallelDDS`:
 
 ```diff
 -ProgramType  DDS
 +ProgramType  ParallelDDS
 ```
 
-This tells OSTRICH to use the parallel version of the DDS algorithm, which generates multiple candidate parameter sets for evaluation in each iteration. Each candidate is evaluated by running the model, and these evaluations are performed in parallel using MPI, where one MPI rank coordinates the search and the other ranks are "workers" that run the model and report the objective function, which in this case is the Kling-Gupta Efficiency (KGE) metric.
+This changes the OSTRICH optimizer while keeping the model execution workflow intact.
 
 Next, add a worker-directory prefix after `ModelExecutable`:
 
@@ -132,7 +100,7 @@ This tells OSTRICH to create separate working directories such as `ostrich_worke
 +EndExtraDirs
 ```
 
-To specify the options for parallel calibration, replace the serial DDS algorithm block with a `ParallelDDS` block:
+Finally, replace the serial DDS algorithm block with a `ParallelDDS` block:
 
 ```diff
 -BeginDDSAlg
@@ -149,7 +117,7 @@ To specify the options for parallel calibration, replace the serial DDS algorith
 - Why do the worker directories need multiple copies of `data`, `model`, `ostrich`, and `scripts`?
 - If the `MaxIterations` is kept fixed at 40 and we increase the number of MPI ranks, and the random seed is fixed, will the same parameter sets be evaluated in each run?
 
-## Part 3: Convert the Launch Script to Slurm and MPI
+## Step 3: Convert the Launch Script to Slurm and MPI
 
 Open `scripts/run_ostrich.sh` and modify it to submit a Slurm job that launches `OstrichMPI` with `srun`. The script should loop over 1, 2, and 4 model-evaluation workers. Because one extra MPI rank coordinates the OSTRICH search, each `srun` call should request one more total MPI task than the number of workers. The first scaling run therefore uses one model-evaluation worker and two total MPI ranks. This `nworkers=1` run is the baseline for the strong-scaling calculation:
 
@@ -194,7 +162,7 @@ done
 
 **Deliverable:** the *Slurm and MPI Implementation* section of your memo must identify the lines that request Slurm resources, the line that launches the MPI version of OSTRICH, the reason for calculating `task_count` from `worker_count`, why the one-worker case is the smallest scaling case, and the file that stores the timing results.
 
-## Part 4: Run the Parallel Calibration
+## Step 4: Run the Parallel Calibration
 
 From the cluster login or head node where you made your edits, submit the job from the case directory:
 
@@ -218,7 +186,7 @@ cat output_archive/KGE.txt
 ls output_archive
 ```
 
-## Part 5: Calculate Strong Scaling
+## Step 5: Calculate Strong Scaling
 
 Inspect the timing file:
 
@@ -227,31 +195,13 @@ ls strong_scaling_times_*.csv
 cat strong_scaling_times_*.csv
 ```
 
-Create a table with these columns:
+Based on the timing file, create a table with these columns:
 
-```text
-nworkers, ntasks, time_seconds, speedup, parallel_efficiency
-```
-
-Use:
-
-```text
-nworkers = ntasks - 1
-```
-
-because one MPI rank coordinates the OSTRICH search.
-
-Use the `nworkers=1` run as the reference:
-
-```text
-speedup(nworkers) = time_seconds(nworkers=1) / time_seconds(nworkers)
-```
-
-Estimate efficiency relative to the number of model-evaluation workers:
-
-```text
-parallel_efficiency = speedup / nworkers
-```
+- Total MPI tasks
+- Number of model-evaluation workers
+- Runtime in seconds
+- Speedup relative to the one-worker case
+- Strong-scaling efficiency with respect to the number of workers
 
 **Deliverable:** the *Scaling Results* section of your memo must report the timing file, the strong-scaling table, the speedup values, and the parallel efficiency values. Briefly interpret whether adding workers improved runtime and whether the speedup was close to ideal.
 
