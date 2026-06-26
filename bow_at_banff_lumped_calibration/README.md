@@ -78,4 +78,10 @@ cat output_archive/KGE.txt
 ls output_archive
 ```
 
+Remove worker directories and logs while keeping the best archived trial:
+
+```sh
+./scripts/cleanup_calibration.sh
+```
+
 The Slurm script assumes it is submitted from the case directory. It uses `PYTHON` and `SUMMA_EXE` when set, otherwise `python` and `summa.exe`. The `OstrichMPI` executable is expected on `PATH`.

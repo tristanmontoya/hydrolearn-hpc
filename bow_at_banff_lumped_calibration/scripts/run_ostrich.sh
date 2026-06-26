@@ -11,5 +11,9 @@ export PYTHON="${PYTHON:-python}"
 export SUMMA_EXE="${SUMMA_EXE:-summa.exe}"
 export PARALLEL_CALIBRATION_ROOT="${PWD}"
 
+echo "SLURM_NTASKS=$SLURM_NTASKS"
+echo "SLURM_TASKS_PER_NODE=$SLURM_TASKS_PER_NODE"
+echo "SLURM_JOB_NUM_NODES=$SLURM_JOB_NUM_NODES"
+
 # Replaced `ostrich` with `OstrichMPI` to enable parallel calibration
-srun OstrichMPI
+srun -n $SLURM_NTASKS OstrichMPI
