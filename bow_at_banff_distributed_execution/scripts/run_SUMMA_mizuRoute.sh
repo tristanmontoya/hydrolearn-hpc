@@ -4,8 +4,6 @@ set -euo pipefail
 # Resolve paths from this runner location
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 basin_dir="$(cd "${script_dir}/.." && pwd -P)"
-repo_dir="$(cd "${basin_dir}/.." && pwd -P)"
-shared_scripts_path="${repo_dir}/scripts"
 
 # Use the basin directory as the base for relative model paths
 cd "${basin_dir}"
@@ -13,7 +11,7 @@ cd "${basin_dir}"
 # Define model configuration paths
 summa_filemanager="model/settings/SUMMA/fileManager.txt"
 route_control="model/settings/mizuRoute/mizuRoute.control"
-summa_run_script="${SUMMA_RUN_SCRIPT:-${script_dir}/summa_run.sh}"
+concat_summa_script="${script_dir}/concat_summa_outputs.py"
 diagnostics_script="${script_dir}/calculate_run_diagnostics.py"
 log_file="${basin_dir}/model_run.log"
 
@@ -48,9 +46,8 @@ require_file() {
 # Require the necessary files for this model run
 require_file "${summa_filemanager}"
 require_file "${route_control}"
-require_file "${summa_run_script}"
+require_file "${concat_summa_script}"
 require_file "${diagnostics_script}"
-require_file "${shared_scripts_path}/concat_summa_ouputs.py"
 
 # Log a model-run phase to stdout and the run log
 log_step() {
@@ -78,7 +75,7 @@ route_out_file_prefix="$(read_from_summa_route_config \
 # Check if the attribute file exists before trying to read the GRU count
 require_file "${summa_attribute_file}"
 
-# Count GRUs for the SUMMA run script
+# Count GRUs for the sequential SUMMA loop
 n_gru="$(ncks -Cm -v gruId -m "${summa_attribute_file}" \
     | awk '$1 == "gru" && $2 == "=" {n = $3} END {if (n != "") print n}')"
 if [ -z "${n_gru}" ]; then
@@ -86,18 +83,17 @@ if [ -z "${n_gru}" ]; then
     exit 1
 fi
 
-# Run SUMMA through the configurable script
+# Run SUMMA once for each GRU
 log_step "run summa"
 mkdir -p "${summa_output_path}"
 rm -f "${summa_output_path}/${summa_out_file_prefix}"*
-SUMMA_EXE="${summa_exe}" \
-SUMMA_FILEMANAGER="${summa_filemanager}" \
-N_GRU="${n_gru}" \
-bash "${summa_run_script}"
+for gru_index in $(seq 1 "${n_gru}"); do
+    "${summa_exe}" -g "${gru_index}" 1 -r never -m "${summa_filemanager}"
+done
 
 # Merge split GRU outputs into one file for routing
 log_step "concatenate summa outputs"
-"${python_exe}" "${shared_scripts_path}/concat_summa_ouputs.py" \
+"${python_exe}" "${concat_summa_script}" \
     --summa-filemanager "${summa_filemanager}"
 
 # Shift daily SUMMA output times to the mizuRoute convention
@@ -131,7 +127,7 @@ fi
 log_step "calculate diagnostics"
 "${python_exe}" "${diagnostics_script}" \
     --sim-file "${route_merged_file}" \
-    --obs-file "data/obs_flow.CAN_05BB001.cfs.csv" \
+    --obs-file "obs/obs_flow.CAN_05BB001.cfs.csv" \
     --output-dir "results" \
     --start-date "2003-10-01" \
     --end-date "2005-09-30" \

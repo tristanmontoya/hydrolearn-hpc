@@ -72,7 +72,7 @@ def concat_summa_outputs(args):
 
 if __name__ == '__main__':
     
-    # an example: python concat_summa_ouputs.py ../control_active.txt
+    # an example: python concat_summa_outputs.py ../control_active.txt
 
     # ------------------------------ Prepare ---------------------------------
     # Process command line  

@@ -30,7 +30,7 @@ def process_command_line() -> argparse.Namespace:
     )
     parser.add_argument(
         "--obs-file",
-        default="data/obs_flow.CAN_05BB001.cfs.csv",
+        default="obs/obs_flow.CAN_05BB001.cfs.csv",
         help="Observation CSV relative to the basin directory.",
     )
     parser.add_argument(
