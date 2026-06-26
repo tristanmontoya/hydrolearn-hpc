@@ -85,12 +85,6 @@ Inspect the strong-scaling timings:
 cat strong_scaling_times_${SLURM_JOB_ID}.csv
 ```
 
-Remove worker directories and logs while keeping the best archived trial:
-
-```sh
-./scripts/cleanup_calibration.sh
-```
-
 The Slurm script assumes it is submitted from the case directory. It uses `PYTHON` and `SUMMA_EXE` when set, otherwise `python` and `summa.exe`. The `OstrichMPI` executable is expected on `PATH`.
 
 Remove generated SUMMA outputs, diagnostics, OSTRICH worker directories, OSTRICH logs, Slurm logs, timing files, and the best-trial archive with:
