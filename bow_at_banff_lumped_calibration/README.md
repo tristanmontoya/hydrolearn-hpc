@@ -30,7 +30,7 @@ bow_at_banff_lumped_calibration/
 `ostIn.txt` runs `scripts/run_trial.sh` with ParallelDDS for 40 evaluations, optimizes a KGE-based objective, and preserves the best trial with `scripts/save_best.sh`.
 `ostrich/` contains the multiplier template and initial multiplier values.
 
-`scripts/run_ostrich.sh` submits the default Slurm job with four OSTRICH MPI tasks across the two VM worker nodes.
+`scripts/run_ostrich.sh` submits a Slurm strong-scaling job with 1, 2, 4, and 8 OSTRICH MPI tasks.
 
 `output_archive/` is created at run time and contains the best `trialParams.nc`, `run1_day.nc`, diagnostics, multiplier files, and OSTRICH logs.
 
@@ -76,6 +76,12 @@ After the job completes, inspect the best archived trial:
 ```sh
 cat output_archive/KGE.txt
 ls output_archive
+```
+
+Inspect the strong-scaling timings:
+
+```sh
+cat strong_scaling_times_${SLURM_JOB_ID}.csv
 ```
 
 Remove worker directories and logs while keeping the best archived trial:

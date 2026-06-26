@@ -31,6 +31,7 @@ __pycache__/
 bow_at_banff_lumped_calibration/Ost*.txt
 bow_at_banff_lumped_calibration/model_run.log
 bow_at_banff_lumped_calibration/slurm-*.out
+bow_at_banff_lumped_calibration/strong_scaling_times_*.csv
 bow_at_banff_lumped_calibration/ostrich_worker_*/
 
 # Retain the OSTRICH input file for the lumped calibration
