@@ -10,7 +10,6 @@ Diagnostics compare simulated streamflow to observed daily flow over `2003-10-01
 
 ```text
 bow_at_banff_distributed_execution/
-├── data/
 ├── model/
 │   ├── forcing/
 │   ├── settings/
@@ -18,11 +17,12 @@ bow_at_banff_distributed_execution/
 │   │   └── mizuRoute/
 │   ├── shapefiles/
 │   └── simulations/
+├── obs/
 ├── results/
 └── scripts/
 ```
 
-`data/` contains observed daily streamflow for station `CAN_05BB001`.
+`obs/` contains observed daily streamflow for station `CAN_05BB001`.
 
 `model/forcing/4_SUMMA_input/` contains SUMMA meteorological forcing files. The active file is selected by `model/settings/SUMMA/forcingFileList.txt`.
 
@@ -30,11 +30,11 @@ bow_at_banff_distributed_execution/
 
 `model/settings/mizuRoute/` contains `mizuRoute.control`, `topology.nc`, and `param.nml.default`.
 
-`model/shapefiles/` contains GIS inputs used to build the distributed basin and river-network attributes. `_workflow_log/` directories preserve generation logs where present.
+`model/shapefiles/` contains GIS inputs used to build the distributed basin and river-network attributes.
 
 `model/simulations/run1/` contains SUMMA and mizuRoute outputs for the `run1` case. `results/` contains `KGE.txt`, `streamflow_simulated.csv`, and `obs_vs_sim.png`.
 
-`scripts/run_SUMMA_mizuRoute.sh` runs SUMMA, concatenates SUMMA output, shifts daily times for mizuRoute, runs mizuRoute, merges routed output, and writes diagnostics. `scripts/summa_run.sh` runs the 52 GRUs serially.
+`scripts/run_SUMMA_mizuRoute.sh` runs the 52 GRUs serially with SUMMA, concatenates SUMMA output, shifts daily times for mizuRoute, runs mizuRoute, merges routed output, and writes diagnostics.
 
 ## Serial execution
 

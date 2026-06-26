@@ -39,3 +39,5 @@ bow_at_banff_lumped_calibration/ostrich_worker_*/
 # Original reference files
 CAN_05BB001_distributed/
 CAN_05BB001_lumped/
+
+AGENTS.md
