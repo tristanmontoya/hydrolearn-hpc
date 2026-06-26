@@ -9,19 +9,19 @@ The case requires external `ostrich` and `summa.exe` executables. See the top-le
 ```text
 bow_at_banff_lumped_calibration/
 ├── ostIn.txt
-├── data/
 ├── model/
 │   ├── forcing/
 │   ├── settings/SUMMA/
 │   ├── shapefiles/
 │   └── simulations/
+├── obs/
 ├── ostrich/
 ├── output_archive/
 ├── results/
 └── scripts/
 ```
 
-`data/` contains observed daily streamflow for station `CAN_05BB001`.
+`obs/` contains observed daily streamflow for station `CAN_05BB001`.
 
 `model/forcing/4_SUMMA_input/` contains the cropped SUMMA forcing file `CAN_05BB001_lumped_2002_2009.nc`, spanning `2002-10-01 00:00` through `2009-09-30 23:00`.
 
@@ -45,3 +45,9 @@ Run the calibration from this directory:
 ```
 
 The runner uses `PYTHON` and `SUMMA_EXE` when set, otherwise `python` and `summa.exe`. The `ostrich` executable is expected on `PATH`.
+
+Remove generated SUMMA outputs, diagnostics, OSTRICH worker directories, OSTRICH logs, Slurm logs, timing files, and the best-trial archive with:
+
+```sh
+./scripts/clear_outputs.sh
+```

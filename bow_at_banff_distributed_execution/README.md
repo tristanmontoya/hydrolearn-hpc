@@ -32,7 +32,9 @@ bow_at_banff_distributed_execution/
 
 `model/shapefiles/` contains GIS inputs used to build the distributed basin and river-network attributes.
 
-`model/simulations/run1/` contains SUMMA and mizuRoute outputs for the `run1` case. `results/` contains `KGE.txt`, `streamflow_simulated.csv`, and `obs_vs_sim.png`.
+`model/simulations/run1/` contains raw SUMMA and mizuRoute outputs for the `run1` case.
+
+`results/` contains `KGE.txt`, `streamflow_simulated.csv`, and `obs_vs_sim.png`, which are postprocessed outputs for the `run1` case.
 
 `scripts/run_SUMMA_mizuRoute.sh` runs the 52 GRUs serially with SUMMA, concatenates SUMMA output, shifts daily times for mizuRoute, runs mizuRoute, merges routed output, and writes diagnostics.
 
@@ -54,3 +56,9 @@ MIZUROUTE_EXE=/path/to/mizuRoute.exe \
 ```
 
 During a run, `model_run.log` records phases, previous `run1` outputs are removed, and regenerated diagnostics are written to `results/`.
+
+Remove generated `run1` outputs, diagnostics, and `model_run.log` with:
+
+```sh
+./scripts/clear_outputs.sh
+```

@@ -106,7 +106,7 @@ log_step "calculate diagnostics"
 if ! "${python_exe}" "${diagnostics_script}" \
     --sim-file "${summa_output_path}/${summa_out_file_prefix}_day.nc" \
     --attributes-file "${summa_settings_path}/attributes.nc" \
-    --obs-file "data/obs_flow.CAN_05BB001.cfs.csv" \
+    --obs-file "obs/obs_flow.CAN_05BB001.cfs.csv" \
     --output-dir "results" \
     --start-date "2003-10-01" \
     --end-date "2005-09-30" \
