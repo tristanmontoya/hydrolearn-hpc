@@ -1,10 +1,10 @@
 # Ostrich configuration file
 
-# Serial DDS uses `ProgramType DDS`
+# Use the parallel DDS optimizer
 ProgramType  ParallelDDS
 ModelExecutable ./scripts/run_trial.sh
 
-# Serial DDS runs in the case directory; ParallelDDS stages rank-local workdirs
+# Stage rank-local working directories for model evaluations
 ModelSubdir ostrich_worker_
 ObjectiveFunction gcop
 
@@ -68,7 +68,7 @@ EndConstraints
 # Random seed control
 RandomSeed 721734144
 
-# Replaced `BeginDDSAlg` and `EndDDSAlg` to enable parallel calibration
+# Configure the parallel DDS search
 BeginParallelDDSAlg
 PerturbationValue 0.20
 MaxIterations 40

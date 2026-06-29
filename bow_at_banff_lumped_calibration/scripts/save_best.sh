@@ -30,9 +30,16 @@ read_from_summa_config() {
     printf '%s\n' "${info}"
 }
 
-# Archive files associated with the current best trial
-mkdir -p "${output_archive}"
+# Refresh the archive so it contains only the current best trial
+if [ -z "${output_archive}" ] || [ "${output_archive}" = "/" ]; then
+    echo "Unsafe archive path: ${output_archive}" >&2
+    exit 1
+fi
 
+mkdir -p "${output_archive}"
+find "${output_archive}" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+
+# Archive files associated with the current best trial
 summa_output_path="$(read_from_summa_config "${summa_filemanager}" "outputPath")"
 summa_out_file_prefix="$(read_from_summa_config "${summa_filemanager}" "outFilePrefix")"
 summa_day_file="${summa_output_path}/${summa_out_file_prefix}_day.nc"

@@ -7,6 +7,12 @@
 #SBATCH --output=slurm-%x-%j.out
 set -euo pipefail
 
+# Prevent accidental execution on the login node
+if [ -z "${SLURM_JOB_ID:-}" ]; then
+    echo "Submit this script with sbatch instead of running it on the login node" >&2
+    exit 1
+fi
+
 # Use the executables available on PATH
 export PYTHON="${PYTHON:-python}"
 export SUMMA_EXE="${SUMMA_EXE:-summa.exe}"

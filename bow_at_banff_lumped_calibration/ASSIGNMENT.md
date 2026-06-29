@@ -1,19 +1,18 @@
-# Activity 2: Parallel Calibration of a Lumped Hydrologic Model
+# Part 2: Parallel Calibration of a Lumped Hydrologic Model
 
-In this activity, you will take the role of a **research computing specialist advising a hydrology research group**. You will start from a serial calibration workflow for a lumped hydrologic model, and you will convert it to a parallel workflow that uses **Slurm** and **MPI**. You will then run a simple scaling test to evaluate the performance of the parallel workflow, and you will write a memo to the research group that summarizes your work and provides recommendations for future use of the parallel workflow.
+As in Part 1, this part of the activity will put you in the role of a **research computing specialist advising a hydrology research group**. You will start from a serial calibration workflow for a lumped hydrologic model, and you will convert it to a parallel workflow that uses **Slurm** and **MPI**. You will then run a simple scaling test to evaluate the performance of the parallel workflow, and you will write a memo to the research group that summarizes your work and provides recommendations for future use of the parallel workflow.
 
 **Deliverable:** Complete the technical work below and submit one practical, concise memo with the following sections:
 
-1. *Current Serial Workflow*
-2. *Parallelization Plan*
-3. *Slurm and MPI Implementation*
-4. *Scaling Results*
-5. *Recommendation and Reflection*
-6. *Reproducibility Appendix*
+1. *Serial Workflow*
+2. *Parallelization*
+3. *Performance Evaluation*
+4. *Recommendation and Reflection*
+5. *Reproducibility Appendix*
 
-The memo should be a single document that addresses all of the deliverables above, either as a **Markdown file** or a **PDF created using LaTeX**. The following steps will guide you through the technical work required to complete this activity, and will describe the deliverables for each section of your memo.
+The memo should be a single document that addresses all of the deliverables above, either as a **Markdown file** or a **PDF document**.
 
-## Step 1: Inspect the Serial Calibration Workflow
+## 1. Serial Workflow
 
 This activity uses **OSTRICH** (Optimization Software Toolkit for Research Involving Computational Heuristics) to calibrate a lumped model for the Bow River basin upstream of the Banff streamflow gauge based on the **SUMMA** (Structure for Unifying Multiple Modeling Alternatives) hydrologic model. The starting point is a serial calibration workflow that uses the Dynamically Dimensioned Search (`DDS`) algorithm.
 
@@ -60,18 +59,62 @@ export PARALLEL_CALIBRATION_ROOT="${PWD}"
 ostrich
 ```
 
-Your goal is to modify this serial workflow so that it runs `ParallelDDS` through Slurm and `OstrichMPI`. At this stage, focus on the structure of the serial workflow: OSTRICH chooses a candidate parameter set, `run_trial.sh` evaluates that candidate by running SUMMA and calculating KGE, and OSTRICH uses the result to choose the next candidate.
+Your goal is to modify this serial workflow so that it first runs safely through Slurm, and then runs `ParallelDDS` through Slurm and `OstrichMPI`. At this stage, focus on the structure of the serial workflow: OSTRICH chooses a candidate parameter set, `run_trial.sh` evaluates that candidate by running SUMMA and calculating KGE, and OSTRICH uses the result to choose the next candidate.
 
-**Deliverable:** the *Current Serial Workflow* section of your memo must provide a high-level overview of the workflow and address the following questions:
-- Why can't the serial `DDS` algorithm be parallelized across optimization iterations?
+Before changing the optimizer, run the serial workflow as a scheduled Slurm job. Do not run the calibration directly on the login or head node, because even the serial calibration consumes shared resources for an extended period.
+
+Open `scripts/run_ostrich.sh` and modify it so that it remains a serial OSTRICH run, but is submitted through Slurm:
+
+```sh
+#!/usr/bin/env bash
+#SBATCH --job-name=serial-calibration
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --time=00:10:00
+#SBATCH --output=slurm-%x-%j.out
+set -euo pipefail
+
+export PYTHON="${PYTHON:-python}"
+export SUMMA_EXE="${SUMMA_EXE:-summa.exe}"
+export PARALLEL_CALIBRATION_ROOT="${PWD}"
+
+ostrich
+```
+
+The `#SBATCH` lines request one Slurm task for the serial calibration. This run should not change `ostIn.txt`: it is still a serial `DDS` run. Submit the serial calibration from the case directory:
+
+```sh
+sbatch scripts/run_ostrich.sh
+```
+
+Check the queue:
+
+```sh
+squeue -u "${USER}"
+```
+
+After the job finishes, inspect the Slurm log and archived best model:
+
+```sh
+ls slurm-*.out
+less slurm-*.out
+cat output_archive/KGE.txt
+ls output_archive
+```
+
+**Deliverable:** the *Serial Workflow* section of your memo must provide a high-level overview of the workflow and address the following questions:
+- What would happen if we set `--ntasks-per-node=4` in the above Slurm script? Would the workflow run faster? Why or why not?
 - What opportunities still exist for parallelism when the optimization algorithm itself is serial?
 - What, conceptually, must change in the optimization method to allow parallelism across optimization iterations?
 
-## Step 2: Convert `ostIn.txt` to `ParallelDDS`
+## 2. Parallelization
 
 `ParallelDDS` is the OSTRICH parallel version of DDS. It can generate multiple candidate parameter sets during the optimization. Each candidate must still be evaluated by running SUMMA and calculating the objective function, but those model evaluations are independent of one another and can be assigned to separate MPI worker ranks.
 
-Open `ostIn.txt`. The serial file needs three kinds of changes: select the parallel DDS algorithm, tell OSTRICH how to create worker directories, and replace the serial DDS algorithm block with the `ParallelDDS` block.
+Open `ostIn.txt`. The serial file needs three main changes:
+1. Select the parallel DDS algorithm
+2. Tell OSTRICH how to create worker directories
+3. Replace the serial DDS algorithm block that specifies the parameters with a `ParallelDDS` block using the same parameters.
 
 First, change the program type from serial DDS to `ParallelDDS`:
 
@@ -112,14 +155,7 @@ Finally, replace the serial DDS algorithm block with a `ParallelDDS` block:
 +EndParallelDDSAlg
 ```
 
-**Deliverable:** the *Parallelization Plan* section of your memo must address the following questions:
-
-- Why do the worker directories need multiple copies of `data`, `model`, `ostrich`, and `scripts`?
-- If the `MaxIterations` is kept fixed at 40 and we increase the number of MPI ranks, and the random seed is fixed, will the same parameter sets be evaluated in each run?
-
-## Step 3: Convert the Launch Script to Slurm and MPI
-
-Open `scripts/run_ostrich.sh` and modify it to submit a Slurm job that launches `OstrichMPI` with `srun`. The script should loop over 1, 2, and 4 model-evaluation workers. Because one extra MPI rank coordinates the OSTRICH search, each `srun` call should request one more total MPI task than the number of workers. The first scaling run therefore uses one model-evaluation worker and two total MPI ranks. This `nworkers=1` run is the baseline for the strong-scaling calculation:
+Next, open `scripts/run_ostrich.sh` again and modify the serial Slurm script so that it launches `OstrichMPI` with `srun`. The script should loop over 1, 2, and 4 model-evaluation workers. Because OSTRICH uses one MPI rank to coordinate the calibration, each `srun` call should request one more total task than the number of workers. The first scaling run therefore uses one model-evaluation worker and one coordinator, for a total of 2 MPI ranks. This `nworkers=1` run is the baseline for the strong-scaling calculation:
 
 ```sh
 #!/usr/bin/env bash
@@ -131,28 +167,40 @@ Open `scripts/run_ostrich.sh` and modify it to submit a Slurm job that launches 
 #SBATCH --output=slurm-%x-%j.out
 set -euo pipefail
 
+# Prevent accidental execution on the login node
+if [ -z "${SLURM_JOB_ID:-}" ]; then
+    echo "Submit this script with sbatch instead of running it on the login node" >&2
+    exit 1
+fi
+
+# Use the executables available on PATH
 export PYTHON="${PYTHON:-python}"
 export SUMMA_EXE="${SUMMA_EXE:-summa.exe}"
 export PARALLEL_CALIBRATION_ROOT="${PWD}"
 
+# Create a CSV file to store the strong scaling timings
 job_id="${SLURM_JOB_ID:-local}"
 timing_file="strong_scaling_times_${job_id}.csv"
 printf "nworkers,ntasks,seconds\n" > "${timing_file}"
 
+# ParallelDDS uses one coordinator rank in addition to the worker ranks
 for worker_count in 1 2 4; do
     task_count=$((worker_count + 1))
 
+    # Remove any leftover runtime files from previous runs
     for runtime_path in ostrich_worker_* Ost*.txt model_run.log; do
         if [ -e "${runtime_path}" ]; then
             rm -rf -- "${runtime_path}"
         fi
     done
 
+    # Run the parallel calibration with the current worker count
     echo "Running ParallelDDS with ${worker_count} worker(s) and ${task_count} MPI task(s)"
     start_time="$(date +%s)"
     srun --ntasks="${task_count}" OstrichMPI
     end_time="$(date +%s)"
 
+    # Calculate the elapsed time and write a line to the strong scaling CSV file
     elapsed_seconds=$((end_time - start_time))
     printf "%s,%s,%s\n" "${worker_count}" "${task_count}" "${elapsed_seconds}" >> "${timing_file}"
 done
@@ -160,9 +208,11 @@ done
 
 `ParallelDDS` needs at least two MPI ranks because one rank coordinates the search and the other ranks evaluate model runs. The script therefore calculates the total MPI task count as `worker_count + 1`.
 
-**Deliverable:** the *Slurm and MPI Implementation* section of your memo must identify the lines that request Slurm resources, the line that launches the MPI version of OSTRICH, the reason for calculating `task_count` from `worker_count`, why the one-worker case is the smallest scaling case, and the file that stores the timing results.
+**Deliverable:** the *Parallelization* section of your memo must address the following questions:
+- Why do the worker directories need multiple copies of `data`, `model`, `ostrich`, and `scripts`?
+- If the `MaxIterations` is kept fixed at 40 and we increase the number of MPI ranks, and the random seed is fixed, will the same parameter sets be evaluated in each run?
 
-## Step 4: Run the Parallel Calibration
+## 3. Performance Evaluation
 
 From the cluster login or head node where you made your edits, submit the job from the case directory:
 
@@ -186,8 +236,6 @@ cat output_archive/KGE.txt
 ls output_archive
 ```
 
-## Step 5: Calculate Strong Scaling
-
 Inspect the timing file:
 
 ```sh
@@ -203,9 +251,9 @@ Based on the timing file, create a table with these columns:
 - Speedup relative to the one-worker case
 - Strong-scaling efficiency with respect to the number of workers
 
-**Deliverable:** the *Scaling Results* section of your memo must report the timing file, the strong-scaling table, the speedup values, and the parallel efficiency values. Briefly interpret whether adding workers improved runtime and whether the speedup was close to ideal.
+**Deliverable:** the *Performance Evaluation* section of your memo must report the timing file, the strong-scaling table, the speedup values, and the parallel efficiency values. Briefly interpret whether adding workers improved runtime and whether the speedup was close to ideal.
 
-## Recommendation and Reflection
+## 4. Recommendation and Reflection
 
 **Deliverable:** the *Recommendation and Reflection* section of your memo must address the following questions:
 
@@ -213,13 +261,12 @@ Based on the timing file, create a table with these columns:
 - Are all requested Slurm resources used throughout the duration of the scaling study, or are some left idle?
 - What changes could be made to improve resource utilization in this workflow?
 
-## Final Submission
+## 5. Reproducibility Appendix
 
 Submit one memo with the sections listed at the beginning of this activity.
 
 **Deliverable:** the *Reproducibility Appendix* section of your memo must include:
 
 - The final `ostIn.txt` and `scripts/run_ostrich.sh`.
-- The Slurm job ID.
-- The contents of `strong_scaling_times_<job_id>.csv`.
-- The best KGE value from `output_archive/KGE.txt`.
+- The contents of `strong_scaling_times_<job_id>.csv`, where `<job_id>` is the Slurm job ID of your scaling study.
+- The best KGE value from the final parallel run, in `output_archive/KGE.txt`.
