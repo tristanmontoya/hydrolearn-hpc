@@ -76,7 +76,13 @@ A key feature of this workflow is that SUMMA computations for different GRUs are
 
 The case study uses the **Bow at Banff** basin in the Canadian Rockies. This 2,216 km² snow-dominated watershed is divided into **52 GRUs** to represent spatial variability in land surface processes.
 
-![Figure. River network and Grouped Response Unit (GRU) configuration of the Bow at Banff basin.](model/shapefiles/Bow_at_Bnaff_Dist.png)
+<p align="center">
+  <img src="model/shapefiles/Bow_at_Bnaff_Dist.png" width="450" alt="Bow at Banff GRU configuration">
+</p>
+
+<p align="center">
+  <b>Figure 1.</b> River network and GRUs of the Bow at Banff basin used in this activity.
+</p>
 
 ## 1. How SUMMA Executes GRUs
 
@@ -163,8 +169,6 @@ $$
 Example: T1 = 360 seconds
 ```
 </details>
-
-### Scaling Results
 
 Fill in the following table as you complete each experiment.
 
