@@ -158,7 +158,7 @@ Explain:
 
 Complete the following table.
 
-| CPU Cores | Runtime(T_p) | Speedup S(p) | Parallel Efficiency E(p) |
+| CPU Cores | Runtime(Tp) | Speedup S(p) | Parallel Efficiency E(p) |
 |---:|---:|---:|---:|
 |1|||| 
 |2|||| 
