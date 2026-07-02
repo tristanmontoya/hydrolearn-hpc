@@ -16,8 +16,5 @@ rm -f "${summa_output_dir}"/*
 rm -f "${route_output_dir}"/*
 
 # Remove generated diagnostics and run log
-rm -f \
-    "${results_dir}/KGE.txt" \
-    "${results_dir}/obs_vs_sim.png" \
-    "${results_dir}/streamflow_simulated.csv" \
-    "${log_file}"
+rm -f "${results_dir}/KGE.txt" "${results_dir}/obs_vs_sim.png" \
+    "${results_dir}/streamflow_simulated.csv" "${log_file}"

@@ -51,8 +51,7 @@ require_file() {
 log_step() {
     local message="$1"
     echo "--- ${message} ---"
-    date | awk -v message="${message}" \
-        '{printf("%s: %s\n",$0,message)}' >> "${log_file}"
+    date | awk -v message="${message}" '{printf("%s: %s\n",$0,message)}' >> "${log_file}"
 }
 
 # Write a poor score so failed parameter sets cannot reuse stale results
@@ -60,8 +59,7 @@ write_failed_kge() {
     local message="$1"
     echo "${message}" >&2
     printf "%s\t#KGE\n" "${failed_kge}" > "${stat_output}"
-    date | awk -v message="${message}" \
-        '{printf("%s: %s\n",$0,message)}' >> "${log_file}"
+    date | awk -v message="${message}" '{printf("%s: %s\n",$0,message)}' >> "${log_file}"
 }
 
 # Require files before touching generated outputs
@@ -84,13 +82,10 @@ fi
 log_step "update parameters"
 "${python_exe}" scripts/update_param_trial.py \
     --multiplier-template "${multiplier_template}" \
-    --multiplier-values "${multiplier_values}" \
-    --trial-param-file "${trial_param_file}"
+    --multiplier-values "${multiplier_values}" --trial-param-file "${trial_param_file}"
 
 # Remove stale diagnostics before the model execution
-rm -f "${stat_output}" \
-    results/streamflow_simulated.csv \
-    results/obs_vs_sim.png
+rm -f "${stat_output}" results/streamflow_simulated.csv results/obs_vs_sim.png
 
 # Run SUMMA for the current trial
 log_step "run summa"
@@ -106,11 +101,8 @@ log_step "calculate diagnostics"
 if ! "${python_exe}" "${diagnostics_script}" \
     --sim-file "${summa_output_path}/${summa_out_file_prefix}_day.nc" \
     --attributes-file "${summa_settings_path}/attributes.nc" \
-    --obs-file "obs/obs_flow.CAN_05BB001.cfs.csv" \
-    --output-dir "results" \
-    --start-date "2003-10-01" \
-    --end-date "2005-09-30" \
-    --make-plot; then
+    --obs-file "obs/obs_flow.CAN_05BB001.cfs.csv" --output-dir "results" \
+    --start-date "2003-10-01" --end-date "2005-09-30" --make-plot; then
     write_failed_kge "diagnostics failed for calibration trial"
     exit 0
 fi

@@ -1,28 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Resolve paths from this cleanup script location
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-basin_dir="$(cd "${script_dir}/.." && pwd -P)"
-
-# Define generated output locations
-summa_output_dir="${basin_dir}/model/simulations/run1/SUMMA"
-results_dir="${basin_dir}/results"
-output_archive="${basin_dir}/output_archive"
+# Run cleanup relative to the case directory
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 # Remove generated SUMMA outputs and diagnostics
-rm -f "${summa_output_dir}"/*
-rm -f \
-    "${results_dir}/KGE.txt" \
-    "${results_dir}/obs_vs_sim.png" \
-    "${results_dir}/streamflow_simulated.csv"
+rm -f model/simulations/run1/SUMMA/*
+rm -f results/KGE.txt results/obs_vs_sim.png results/streamflow_simulated.csv
 
 # Remove generated OSTRICH calibration outputs
-rm -rf "${output_archive}"/*
-rm -rf "${basin_dir}"/ostrich_worker_*
-rm -f \
-    "${basin_dir}"/Ost*.txt \
-    "${basin_dir}"/dds_status.out \
-    "${basin_dir}"/model_run.log \
-    "${basin_dir}"/slurm-*.out \
-    "${basin_dir}"/strong_scaling_times_*.csv
+rm -rf output_archive/*
+rm -rf ostrich_worker_*
+rm -f Ost*.txt dds_status.out model_run.log slurm-*.out \
+    strong_scaling_times_*.csv strong_scaling_summary_*.csv
+rm -rf scaling_archive_*

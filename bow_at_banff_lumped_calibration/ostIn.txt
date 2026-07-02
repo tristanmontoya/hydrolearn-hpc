@@ -58,7 +58,6 @@ RandomSeed 721734144
 
 BeginDDSAlg
 PerturbationValue 0.20
-MaxIterations 20
-#UseRandomParamValues
+MaxIterations 40
 UseInitialParamValues
 EndDDSAlg

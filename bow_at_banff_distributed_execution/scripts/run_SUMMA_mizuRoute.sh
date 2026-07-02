@@ -1,19 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Resolve paths from this runner location
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-basin_dir="$(cd "${script_dir}/.." && pwd -P)"
-
-# Use the basin directory as the base for relative model paths
-cd "${basin_dir}"
+# Run from the basin directory
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 # Define model configuration paths
 summa_filemanager="model/settings/SUMMA/fileManager.txt"
 route_control="model/settings/mizuRoute/mizuRoute.control"
-concat_summa_script="${script_dir}/concat_summa_outputs.py"
-diagnostics_script="${script_dir}/calculate_run_diagnostics.py"
-log_file="${basin_dir}/model_run.log"
+concat_summa_script="scripts/concat_summa_outputs.py"
+diagnostics_script="scripts/calculate_run_diagnostics.py"
+log_file="model_run.log"
 
 # Allow executable names to be overridden by the environment
 python_exe="${PYTHON:-python}"
@@ -21,17 +17,10 @@ summa_exe="${SUMMA_EXE:-summa.exe}"
 route_exe="${MIZUROUTE_EXE:-mizuRoute.exe}"
 
 # Read a setting from a SUMMA or mizuRoute text configuration file
-read_from_summa_route_config() {
+read_config_value() {
     local input_file="$1"
     local setting="$2"
-    local line
-    local info
-    line="$(grep -m 1 "^${setting}" "${input_file}")"
-    info="${line%%!*}"
-    info="$(printf '%s\n' "${info}" | cut -d ' ' -f 2- | xargs)"
-    info="${info%\'}"
-    info="${info#\'}"
-    printf '%s\n' "${info}"
+    grep -m 1 "^${setting}" "${input_file}" | cut -d '!' -f 1 | cut -d ' ' -f 2- | xargs
 }
 
 # Stop early when required inputs are missing
@@ -53,24 +42,17 @@ require_file "${diagnostics_script}"
 log_step() {
     local message="$1"
     echo "--- ${message} ---"
-    date | awk -v message="${message}" \
-        '{printf("%s: %s\n",$0,message)}' >> "${log_file}"
+    printf '%s: %s\n' "$(date)" "${message}" >> "${log_file}"
 }
 
 # Read paths and output names from the preconfigured model files
-summa_settings_path="$(read_from_summa_route_config \
-    "${summa_filemanager}" "settingsPath")"
-summa_output_path="$(read_from_summa_route_config \
-    "${summa_filemanager}" "outputPath")"
-summa_out_file_prefix="$(read_from_summa_route_config \
-    "${summa_filemanager}" "outFilePrefix")"
-summa_attribute_file="$(read_from_summa_route_config \
-    "${summa_filemanager}" "attributeFile")"
-summa_attribute_file="${summa_settings_path}/${summa_attribute_file}"
-route_output_path="$(read_from_summa_route_config \
-    "${route_control}" "<output_dir>")"
-route_out_file_prefix="$(read_from_summa_route_config \
-    "${route_control}" "<case_name>")"
+summa_settings_path="$(read_config_value "${summa_filemanager}" "settingsPath")"
+summa_output_path="$(read_config_value "${summa_filemanager}" "outputPath")"
+summa_out_file_prefix="$(read_config_value "${summa_filemanager}" "outFilePrefix")"
+summa_attribute_file="$(read_config_value "${summa_filemanager}" "attributeFile")"
+summa_attribute_file="${summa_settings_path%/}/${summa_attribute_file}"
+route_output_path="$(read_config_value "${route_control}" "<output_dir>")"
+route_out_file_prefix="$(read_config_value "${route_control}" "<case_name>")"
 
 # Check if the attribute file exists before trying to read the GRU count
 require_file "${summa_attribute_file}"
@@ -93,14 +75,12 @@ done
 
 # Merge split GRU outputs into one file for routing
 log_step "concatenate summa outputs"
-"${python_exe}" "${concat_summa_script}" \
-    --summa-filemanager "${summa_filemanager}"
+"${python_exe}" "${concat_summa_script}" --summa-filemanager "${summa_filemanager}"
 
 # Shift daily SUMMA output times to the mizuRoute convention
 log_step "post-process summa output"
 summa_output_file="${summa_output_path}/${summa_out_file_prefix}_day.nc"
-ncap2 -h -O -s 'time[time]=time-86400' \
-    "${summa_output_file}" "${summa_output_file}"
+ncap2 -h -O -s 'time[time]=time-86400' "${summa_output_file}" "${summa_output_file}"
 
 # Run mizuRoute on the merged SUMMA output
 log_step "run mizuRoute"
@@ -119,18 +99,14 @@ if [ "${#route_output_files[@]}" -eq 0 ]; then
     echo "No mizuRoute output files found in ${route_output_path}" >&2
     exit 1
 elif [ "${#route_output_files[@]}" -gt 1 ] \
-    || [ "${route_output_files[0]:-}" != "${route_merged_file}" ]; then
+    || [ "${route_output_files[0]}" != "${route_merged_file}" ]; then
     ncrcat -O -h "${route_output_files[@]}" "${route_merged_file}"
 fi
 
 # Calculate run diagnostics from the merged mizuRoute output
 log_step "calculate diagnostics"
-"${python_exe}" "${diagnostics_script}" \
-    --sim-file "${route_merged_file}" \
-    --obs-file "obs/obs_flow.CAN_05BB001.cfs.csv" \
-    --output-dir "results" \
-    --start-date "2003-10-01" \
-    --end-date "2005-09-30" \
-    --make-plot
+"${python_exe}" "${diagnostics_script}" --sim-file "${route_merged_file}" \
+    --obs-file "obs/obs_flow.CAN_05BB001.cfs.csv" --output-dir "results" \
+    --start-date "2003-10-01" --end-date "2005-09-30" --make-plot
 
 log_step "done with model run"
