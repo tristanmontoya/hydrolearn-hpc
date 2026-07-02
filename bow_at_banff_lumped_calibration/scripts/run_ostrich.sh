@@ -19,22 +19,30 @@ cp ostIn.txt scripts/run_ostrich.sh "${archive_root}/"
 
 # ParallelDDS uses one coordinator rank in addition to the worker ranks
 for worker_count in 1 2 4; do
+    # Calculate the total number of tasks needed for this worker count
     task_count=$((worker_count + 1))
+
+    # Set the output archive directory for this worker-count run
     run_archive="${archive_root}/workers_${worker_count}"
     export OUTPUT_ARCHIVE_DIR="${PWD}/${run_archive}/output_archive"
 
-    # Start this worker-count run from clean runtime and archive paths
+    # Clean previous run artifacts
     rm -rf ostrich_worker_* Ost*.txt model_run.log "${run_archive}"
+
+    # Make a fresh output archive directory
     mkdir -p "${OUTPUT_ARCHIVE_DIR}"
 
-    # Run the parallel calibration with the current worker count
+    # Start the timer for this worker-count run
     start_time="${SECONDS}"
+
+    # Run the parallel calibration with the current worker count
     srun --ntasks="${task_count}" OstrichMPI
 
     # Calculate the elapsed time for this worker-count run
     elapsed_seconds=$((SECONDS - start_time))
 
-    # Preserve the best model and diagnostics from this worker-count run
+    # Read the best KGE from the current run into the variable `best_kge`
+    # or set `best_kge` to `NA` if the file does not exist
     best_kge="NA"
     if [ -f "${OUTPUT_ARCHIVE_DIR}/KGE.txt" ]; then
         read -r best_kge _ < "${OUTPUT_ARCHIVE_DIR}/KGE.txt"
