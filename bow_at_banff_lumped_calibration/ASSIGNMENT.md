@@ -14,7 +14,7 @@ The memo should be a single document that addresses all of the deliverables abov
 
 ## 1. Serial Workflow
 
-This activity uses **OSTRICH** (Optimization Software Toolkit for Research Involving Computational Heuristics) to calibrate a lumped model for the Bow River basin upstream of the Banff streamflow gauge based on the **SUMMA** (Structure for Unifying Multiple Modeling Alternatives) hydrologic model. The starting point is a serial calibration workflow that uses the Dynamically Dimensioned Search (`DDS`) algorithm.
+This activity uses **OSTRICH** (Optimization Software Toolkit for Research Involving Computational Heuristics) to calibrate a lumped model for the Bow River basin upstream of the Banff streamflow gauge based on the **SUMMA** (Structure for Unifying Multiple Modeling Alternatives) hydrologic model. The starting point is a serial calibration workflow that uses the Dynamically Dimensioned Search (DDS) algorithm.
 
 Relative to the distributed execution workflow, the model setup is simplified here so that the calibration runs quickly enough for an instructional scaling test. The SUMMA model is configured in lumped form, where all spatial units are aggregated into a single basin representation. A separate routing model, which would normally combine the results from the spatial units to produce a single streamflow hydrograph, is not required in the lumped model.
 
@@ -175,12 +175,17 @@ cp ostIn.txt scripts/run_ostrich.sh "${archive_root}/"
 
 # ParallelDDS uses one coordinator rank in addition to the worker ranks
 for worker_count in 1 2 4; do
+    # Calculate the total number of tasks needed for this worker count
     task_count=$((worker_count + 1))
+
+    # Set the output archive directory for this worker-count run
     run_archive="${archive_root}/workers_${worker_count}"
     export OUTPUT_ARCHIVE_DIR="${PWD}/${run_archive}/output_archive"
 
-    # Start this worker-count run from clean runtime and archive paths
+    # Clean previous run artifacts
     rm -rf ostrich_worker_* Ost*.txt model_run.log "${run_archive}"
+
+    # Make a fresh output archive directory
     mkdir -p "${OUTPUT_ARCHIVE_DIR}"
 
     # Start the timer for this worker-count run
@@ -192,7 +197,8 @@ for worker_count in 1 2 4; do
     # Calculate the elapsed time for this worker-count run
     elapsed_seconds=$((SECONDS - start_time))
 
-    # Read the best KGE from the current run
+    # Read the best KGE from the current run into the variable `best_kge`
+    # or set `best_kge` to `NA` if the file does not exist
     best_kge="NA"
     if [ -f "${OUTPUT_ARCHIVE_DIR}/KGE.txt" ]; then
         read -r best_kge _ < "${OUTPUT_ARCHIVE_DIR}/KGE.txt"
