@@ -34,9 +34,9 @@ bow_at_banff_distributed_execution/
 
 `model/simulations/run1/` contains raw SUMMA and mizuRoute outputs for the `run1` case.
 
-`results/` contains `KGE.txt`, `streamflow_simulated.csv`, and `obs_vs_sim.png`, which are postprocessed outputs for the `run1` case.
+`results/` contains `KGE.txt` and `obs_vs_sim.png`, which are diagnostic outputs for the `run1` case.
 
-`scripts/run_SUMMA_mizuRoute.sh` runs the 52 GRUs serially with SUMMA, concatenates SUMMA output, shifts daily times for mizuRoute, runs mizuRoute, merges routed output, and writes diagnostics.
+`scripts/run_SUMMA_mizuRoute.sh` runs the 52 GRUs serially with SUMMA.
 
 ## Serial Execution
 
@@ -62,3 +62,14 @@ Remove generated `run1` outputs, diagnostics, and `model_run.log` with:
 ```sh
 ./scripts/clear_outputs.sh
 ```
+
+## Case study introduction ##
+The case study uses the **Bow at Banff** basin in the Canadian Rockies. This 2,216 km² snow-dominated watershed is divided into **52 GRUs** to represent spatial variability in land surface processes.
+
+<p align="center">
+  <img src="model/shapefiles/Bow_at_Banff_Dist.png" width="450" alt="Bow at Banff GRU configuration">
+</p>
+
+<p align="center">
+  <b>Figure 1.</b> River network and GRUs of the Bow at Banff basin used in this activity.
+</p>
