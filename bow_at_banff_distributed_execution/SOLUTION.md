@@ -1,4 +1,4 @@
-# Sample Solution: Learning Activity 1
+# Sample Solution: Part 1
 
 ## 1. Serial Workflow
 
@@ -12,7 +12,7 @@ Simply requesting more CPU cores from Slurm does not improve performance because
 
 ---
 
-## 2. Parallelization by Domain Decomposition
+## 2. Parallelization
 
 Example two-core implementation:
 
