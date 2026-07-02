@@ -67,7 +67,7 @@ Remove generated `run1` outputs, diagnostics, and `model_run.log` with:
 The case study uses the **Bow at Banff** basin in the Canadian Rockies. This 2,216 km² snow-dominated watershed is divided into **52 GRUs** to represent spatial variability in land surface processes.
 
 <p align="center">
-  <img src="model/shapefiles/Bow_at_Bnaff_Dist.png" width="450" alt="Bow at Banff GRU configuration">
+  <img src="model/shapefiles/Bow_at_Banff_Dist.png" width="450" alt="Bow at Banff GRU configuration">
 </p>
 
 <p align="center">
