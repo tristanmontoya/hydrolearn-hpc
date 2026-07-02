@@ -79,15 +79,15 @@ cat output_archive/KGE.txt
 ls output_archive
 ```
 
-Inspect the strong-scaling timings:
+Inspect the strong-scaling summary, replacing `123456` with the Slurm job ID:
 
 ```sh
-cat strong_scaling_times_${SLURM_JOB_ID}.csv
+cat strong_scaling_summary_123456.csv
 ```
 
-The Slurm script assumes it is submitted from the case directory. It uses `PYTHON` and `SUMMA_EXE` when set, otherwise `python` and `summa.exe`. The `OstrichMPI` executable is expected on `PATH`.
+The Slurm script assumes it is submitted from the case directory. The workflow expects `python`, `summa.exe`, and `OstrichMPI` on `PATH`.
 
-Remove generated SUMMA outputs, diagnostics, OSTRICH worker directories, OSTRICH logs, Slurm logs, timing files, and the best-trial archive with:
+Remove generated SUMMA outputs, diagnostics, OSTRICH worker directories, OSTRICH logs, Slurm logs, scaling summaries, scaling archives, and the best-trial archive with:
 
 ```sh
 ./scripts/clear_outputs.sh

@@ -73,10 +73,6 @@ Before changing the optimizer, run the serial workflow as a scheduled Slurm job.
 #SBATCH --output=slurm-%x-%j.out
 set -euo pipefail
 
-export PYTHON="${PYTHON:-python}"
-export SUMMA_EXE="${SUMMA_EXE:-summa.exe}"
-export PARALLEL_CALIBRATION_ROOT="${PWD}"
-
 ostrich
 ```
 
@@ -134,7 +130,6 @@ This tells OSTRICH to create separate working directories such as `ostrich_worke
 
 ```diff
 +BeginExtraDirs
-+data
 +model
 +obs
 +ostrich
@@ -168,26 +163,15 @@ As the script iterates over the worker counts, each `srun` call should request o
 #SBATCH --output=slurm-%x-%j.out
 set -euo pipefail
 
-# Prevent accidental execution on the login node
-if [ -z "${SLURM_JOB_ID:-}" ]; then
-    echo "Submit this script with sbatch instead of running it on the login node" >&2
-    exit 1
-fi
-
-# Use the executables available on PATH
-export PYTHON="${PYTHON:-python}"
-export SUMMA_EXE="${SUMMA_EXE:-summa.exe}"
+# Preserve best models in the original case directory
 export PARALLEL_CALIBRATION_ROOT="${PWD}"
 
-# Create a CSV file to store the strong scaling timings
-job_id="${SLURM_JOB_ID:-local}"
-timing_file="strong_scaling_times_${job_id}.csv"
-summary_file="strong_scaling_summary_${job_id}.csv"
-archive_root="scaling_archive_${job_id}"
-printf "nworkers,ntasks,seconds\n" > "${timing_file}"
+# Create a summary file for the scaling study
+summary_file="strong_scaling_summary_${SLURM_JOB_ID}.csv"
+archive_root="scaling_archive_${SLURM_JOB_ID}"
 printf "nworkers,ntasks,seconds,best_kge,archive_dir\n" > "${summary_file}"
 mkdir -p "${archive_root}"
-cp -p ostIn.txt scripts/run_ostrich.sh "${archive_root}/"
+cp ostIn.txt scripts/run_ostrich.sh "${archive_root}/"
 
 # ParallelDDS uses one coordinator rank in addition to the worker ranks
 for worker_count in 1 2 4; do
@@ -195,55 +179,41 @@ for worker_count in 1 2 4; do
     run_archive="${archive_root}/workers_${worker_count}"
     export OUTPUT_ARCHIVE_DIR="${PWD}/${run_archive}/output_archive"
 
-    # Remove any leftover runtime files from previous runs
-    for runtime_path in ostrich_worker_* Ost*.txt model_run.log; do
-        if [ -e "${runtime_path}" ]; then
-            rm -rf -- "${runtime_path}"
-        fi
-    done
-
-    # Start this worker-count run with a clean archive
-    rm -rf -- "${run_archive}"
+    # Start this worker-count run from clean runtime and archive paths
+    rm -rf ostrich_worker_* Ost*.txt model_run.log "${run_archive}"
     mkdir -p "${OUTPUT_ARCHIVE_DIR}"
 
+    # Start the timer for this worker-count run
+    start_time="${SECONDS}"
+
     # Run the parallel calibration with the current worker count
-    echo "Running ParallelDDS with ${worker_count} worker(s) and ${task_count}" \
-        "MPI task(s)"
-    start_time="$(date +%s.%N)"
     srun --ntasks="${task_count}" OstrichMPI
-    end_time="$(date +%s.%N)"
 
-    # Calculate the elapsed time and write a line to the strong scaling CSV file
-    elapsed_seconds="$(
-        awk -v start_time="${start_time}" -v end_time="${end_time}" \
-            'BEGIN { printf "%.2f", end_time - start_time }'
-    )"
-    printf "%s,%s,%s\n" "${worker_count}" "${task_count}" \
-        "${elapsed_seconds}" >> "${timing_file}"
+    # Calculate the elapsed time for this worker-count run
+    elapsed_seconds=$((SECONDS - start_time))
 
-    # Preserve the best model and diagnostics from this worker-count run
+    # Read the best KGE from the current run
     best_kge="NA"
     if [ -f "${OUTPUT_ARCHIVE_DIR}/KGE.txt" ]; then
-        best_kge="$(awk 'NR == 1 { print $1 }' "${OUTPUT_ARCHIVE_DIR}/KGE.txt")"
+        read -r best_kge _ < "${OUTPUT_ARCHIVE_DIR}/KGE.txt"
     fi
 
     # Keep output_archive aligned with the latest completed run
-    rm -rf -- output_archive
-    cp -a "${OUTPUT_ARCHIVE_DIR}" output_archive
+    rm -rf output_archive
+    cp -r "${OUTPUT_ARCHIVE_DIR}" output_archive
 
-    cp -p "${timing_file}" "${summary_file}" "${run_archive}/"
     printf "%s,%s,%s,%s,%s\n" "${worker_count}" "${task_count}" \
         "${elapsed_seconds}" "${best_kge}" "${run_archive}" >> "${summary_file}"
 done
 ```
 
 **Deliverable:** the *Parallelization* section of your memo must address the following questions:
-- Why do the worker directories need multiple copies of `data`, `model`, `obs`, `ostrich`, and `scripts`?
+- Why do the worker directories need multiple copies of `model`, `obs`, `ostrich`, and `scripts`?
 - If the `MaxIterations` is kept fixed at 40 and we increase the number of MPI ranks, and the random seed is fixed, will the same parameter sets be evaluated in each run?
 
 ## 3. Performance Evaluation
 
-From the cluster login or head node where you made your edits, submit the job from the case directory:
+Submit the job from the case directory:
 
 ```sh
 cd /path/to/hydrolearn-hpc/bow_at_banff_lumped_calibration
@@ -264,20 +234,13 @@ cat output_archive/KGE.txt
 ls output_archive
 ```
 
-Inspect the timing file:
-
-```sh
-cat strong_scaling_times_123456.csv
-```
-
-Inspect the summary file and the per-worker archives:
+Inspect the summary file, which lists the timings, per-worker archives, and best KGE values:
 
 ```sh
 cat strong_scaling_summary_123456.csv
-find scaling_archive_123456 -maxdepth 3 -name KGE.txt -print -exec cat {} \;
 ```
 
-Based on the timing file, create a table with these columns:
+Based on the summary file, create a table with these columns:
 
 - Total MPI tasks
 - Number of model-evaluation workers
@@ -285,7 +248,7 @@ Based on the timing file, create a table with these columns:
 - Speedup relative to the one-worker case
 - Strong-scaling efficiency with respect to the number of workers
 
-**Deliverable:** the *Performance Evaluation* section of your memo must report the timing file, the strong-scaling table, the speedup values, and the parallel efficiency values. Briefly interpret whether adding workers improved runtime and whether the speedup was close to ideal.
+**Deliverable:** the *Performance Evaluation* section of your memo must report the summary file, the strong-scaling table, the speedup values, and the parallel efficiency values. Briefly interpret whether adding workers improved runtime and whether the speedup was close to ideal.
 
 ## 4. Recommendation and Reflection
 
@@ -302,7 +265,6 @@ At the end of your memo, include an appendix that contains the information neede
 **Deliverable:** the *Reproducibility Appendix* section of your memo must include:
 
 - The final `ostIn.txt` and `scripts/run_ostrich.sh`.
-- The contents of `strong_scaling_times_<job_id>.csv`, where `<job_id>` is the Slurm job ID of your scaling study.
-- The contents of `strong_scaling_summary_<job_id>.csv`.
-- The best KGE values in the per-worker archives under `scaling_archive_<job_id>/workers_<nworkers>/output_archive/KGE.txt`.
+- The contents of `strong_scaling_summary_<job_id>.csv`, where `<job_id>` is the Slurm job ID of your scaling study.
+- The per-worker best KGE values reported in `strong_scaling_summary_<job_id>.csv`.
 - The best KGE value from the final parallel run, mirrored in `output_archive/KGE.txt`.

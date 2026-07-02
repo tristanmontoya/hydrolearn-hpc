@@ -25,4 +25,6 @@ rm -f \
     "${basin_dir}"/dds_status.out \
     "${basin_dir}"/model_run.log \
     "${basin_dir}"/slurm-*.out \
-    "${basin_dir}"/strong_scaling_times_*.csv
+    "${basin_dir}"/strong_scaling_times_*.csv \
+    "${basin_dir}"/strong_scaling_summary_*.csv
+rm -rf "${basin_dir}"/scaling_archive_*

@@ -55,7 +55,7 @@ for worker_count in 1 2 4; do
     # Calculate the elapsed time and write a line to the strong scaling CSV file
     elapsed_seconds="$(
         awk -v start_time="${start_time}" -v end_time="${end_time}" \
-            'BEGIN { printf "%.2f", end_time - start_time }'
+            'BEGIN { printf "%.6f", end_time - start_time }'
     )"
     printf "%s,%s,%s\n" "${worker_count}" "${task_count}" \
         "${elapsed_seconds}" >> "${timing_file}"

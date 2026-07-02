@@ -20,7 +20,6 @@ EndFilePairs
 
 # ParallelDDS copies these input directories into each worker directory
 BeginExtraDirs
-data
 model
 obs
 ostrich

@@ -1,4 +1,4 @@
-# Sample Solution: Parallel Calibration Of A Lumped Hydrologic Model
+# Sample Solution: Parallel Calibration of a Lumped Hydrologic Model
 
 This memo summarizes the completed conversion of the Bow River at Banff lumped SUMMA calibration workflow from a serial OSTRICH workflow to a Slurm and MPI workflow using `ParallelDDS`.
 
@@ -12,7 +12,7 @@ There are still useful opportunities for parallelism around a serial optimizer. 
 
 ## Parallelization
 
-The solution changes the OSTRICH configuration from `ProgramType DDS` to `ProgramType ParallelDDS`, adds `ModelSubdir ostrich_worker_`, adds `BeginExtraDirs` for `data`, `model`, `obs`, `ostrich`, and `scripts`, and replaces the DDS block with `BeginParallelDDSAlg`. The archive script also honours `OUTPUT_ARCHIVE_DIR`, so each worker-count run can preserve its own best model archive while serial runs still write to `output_archive/`. The launch script then uses `srun` to start `OstrichMPI`.
+The solution changes the OSTRICH configuration from `ProgramType DDS` to `ProgramType ParallelDDS`, adds `ModelSubdir ostrich_worker_`, adds `BeginExtraDirs` for `model`, `obs`, `ostrich`, and `scripts`, and replaces the DDS block with `BeginParallelDDSAlg`. The archive script also honours `OUTPUT_ARCHIVE_DIR`, so each worker-count run can preserve its own best model archive while serial runs still write to `output_archive/`. The launch script then uses `srun` to start `OstrichMPI`.
 
 The worker directories are isolated per-rank sandboxes. Each MPI worker needs its own copies of the model inputs, scripts, generated SUMMA outputs, and KGE file so that independent model evaluations do not write to the same paths at the same time. Without those separate working directories, multiple MPI ranks could overwrite one another's parameter files, model outputs, or objective-function files.
 
@@ -24,21 +24,21 @@ Even with a fixed random seed and `MaxIterations = 40`, changing the number of w
 
 The strong-scaling baseline is the one-worker `ParallelDDS` run, not the serial DDS run. This keeps the comparison within the same parallel algorithm and launch pathway.
 
-Timing file: `strong_scaling_times_2.csv`
+Summary file: `strong_scaling_summary_4.csv`
 
 | Total MPI Tasks | Model-Evaluation Workers | Runtime (s) | Speedup | Efficiency |
 | ---: | ---: | ---: | ---: | ---: |
-| 2 | 1 | 800.00 | 1.00 | 1.00 |
-| 3 | 2 | 397.00 | 2.02 | 1.01 |
-| 5 | 4 | 244.00 | 3.28 | 0.82 |
+| 2 | 1 | 2437 | 1.00 | 1.00 |
+| 3 | 2 | 636 | 3.83 | 1.92 |
+| 5 | 4 | 396 | 6.15 | 1.54 |
 
 The speedup is calculated as `T_1 / T_N`, where `T_1` is the one-worker parallel runtime and `T_N` is the runtime with `N` model-evaluation workers. The strong-scaling efficiency is `speedup / N`.
 
-Parallel calibration reduced wall time in this scaling study. The two-worker case was slightly better than ideal based on the integer-second timing, which is likely measurement noise and run-to-run variability rather than a durable superlinear effect. The four-worker case was faster than the baseline but below ideal scaling, which is expected because the coordinator rank performs search management, worker directories must be staged, filesystem activity increases, and different trial simulations may not take exactly the same amount of time.
+Parallel calibration reduced wall time in this scaling study. The observed speedups are superlinear relative to the one-worker baseline, so they should be interpreted as measured performance in this VM run rather than as a durable algorithmic scaling law. Possible contributors include run-to-run variability, filesystem cache effects, different trial ordering, and unequal model-evaluation costs.
 
-The final `output_archive/KGE.txt` file contains the best KGE from the final four-worker run, not the best KGE across all scaling cases. Based on the Slurm log, the best KGE values were `0.161631`, `0.353694`, and `0.263835` for the one-, two-, and four-worker runs, respectively. The best KGE observed across the scaling study was therefore `0.353694` from the two-worker run.
+The final `output_archive/KGE.txt` file contains the best KGE from the final four-worker run, not necessarily the best KGE across all scaling cases. The summary file reports best KGE values of `0.161631`, `0.353694`, and `0.263835` for the one-, two-, and four-worker runs, respectively. The best KGE observed across the scaling study was therefore `0.353694` from the two-worker run.
 
-## Recommendation And Reflection
+## Recommendation and Reflection
 
 Parallelizing the calibration workflow is valuable because it can shorten turnaround time for calibration experiments and make broader research studies feasible. With a faster workflow, the group can test more parameterizations, explore multiple random seeds, compare different initial guesses, and run sensitivity or uncertainty studies with less waiting time between decisions.
 
@@ -53,19 +53,15 @@ Final configuration files:
 - `ostIn.txt`
 - `scripts/run_ostrich.sh`
 
-Slurm job ID: `2`
+Slurm job ID: `4`
 
-Timing file contents:
+Summary file contents:
 
 ```csv
-nworkers,ntasks,seconds
-1,2,800
-2,3,397
-4,5,244
+nworkers,ntasks,seconds,best_kge,archive_dir
+1,2,2437,0.161631,scaling_archive_4/workers_1
+2,3,636,0.353694,scaling_archive_4/workers_2
+4,5,396,0.263835,scaling_archive_4/workers_4
 ```
 
 Best KGE from the final successful parallel run: `0.263835`
-
-Best KGE observed across the scaling study from the Slurm log: `0.353694`
-
-The value in `output_archive/KGE.txt` is the best KGE preserved by the final successful parallel run. It is not necessarily the best KGE across all scaling cases unless each scaling case is archived separately and compared afterward. The final launch script now writes `strong_scaling_summary_<job_id>.csv` and archives each case under `scaling_archive_<job_id>/workers_<nworkers>/` so future runs preserve this comparison directly.

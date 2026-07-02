@@ -1,0 +1,4 @@
+nworkers,ntasks,seconds,best_kge,archive_dir
+1,2,2437.016219,0.161631,scaling_archive_4/workers_1
+2,3,636.392700,0.353694,scaling_archive_4/workers_2
+4,5,395.711530,0.263835,scaling_archive_4/workers_4
