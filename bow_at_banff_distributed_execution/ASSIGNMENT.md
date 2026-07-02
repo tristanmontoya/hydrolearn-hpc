@@ -154,7 +154,7 @@ Explain:
 
 ---
 
-# 3. Performance Evaluation
+## 3. Performance Evaluation
 
 Complete the following table.
 
@@ -180,7 +180,7 @@ Discuss:
 
 ---
 
-# 4. Recommendation and Reflection
+## 4. Recommendation and Reflection
 
 Provide recommendations for a research group planning larger distributed simulations.
 
@@ -192,7 +192,7 @@ Discuss:
 
 ---
 
-# 5. Reproducibility Appendix
+## 5. Reproducibility Appendix
 
 Include:
 
