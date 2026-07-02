@@ -4,10 +4,10 @@
 
 Assume you are a **research computing specialist** helping a hydrology research group improve the performance of a distributed **SUMMA–mizuRoute** workflow.
 
-Convert the existing serial workflow into a parallel workflow using **domain decomposition**, evaluate its performance, and submit **one technical memo** (Markdown or PDF) with the following sections:
+Convert the existing serial workflow into a parallel workflow by simulating multiple spatial units at the same time, evaluate its performance, and submit **one technical memo** (Markdown or PDF) with the following sections:
 
 1. Serial Workflow
-2. Parallelization by Domain Decomposition
+2. Parallelization
 3. Performance Evaluation
 4. Recommendation and Reflection
 5. Reproducibility Appendix
@@ -87,7 +87,7 @@ Describe:
 
 ---
 
-## 2. Parallelization by Domain Decomposition
+## 2. Parallelization
 
 ### 2.1 Determine Available Resources
 
