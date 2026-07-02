@@ -78,8 +78,7 @@ Before production runs, perform a scaling study to identify an efficient process
 
 Include:
 
-- final `run_SUMMA_mizuRoute.sh`
-- final `submit_SUMMA.sh`
-- CPU information
-- runtime measurements
-- hardware specifications
+- each experiment `run_SUMMA_mizuRoute.sh`
+- each experiment `submit_run.sh`
+- runtime and performance table
+- CPU information. 
