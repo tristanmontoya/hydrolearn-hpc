@@ -16,7 +16,7 @@ The memo should be a single document that addresses all of the deliverables abov
 
 This activity uses **OSTRICH** (Optimization Software Toolkit for Research Involving Computational Heuristics) to calibrate a lumped model for the Bow River basin upstream of the Banff streamflow gauge based on the **SUMMA** (Structure for Unifying Multiple Modeling Alternatives) hydrologic model. The starting point is a serial calibration workflow that uses the Dynamically Dimensioned Search (DDS) algorithm.
 
-Relative to the distributed execution workflow, the model setup is simplified here so that the calibration runs quickly enough for an instructional scaling test. The SUMMA model is configured in lumped form, where all spatial units are aggregated into a single basin representation. A separate routing model, which would normally combine the results from the spatial units to produce a single streamflow hydrograph, is not required in the lumped model.
+Relative to the distributed execution workflow considered in Part I, the model setup is simplified here so that the calibration runs quickly enough for an instructional scaling test. The SUMMA model is configured in lumped form, where all spatial units are aggregated into a single basin representation. A separate routing model, which would normally combine the results from the spatial units to produce a single streamflow hydrograph, is not required in the lumped model.
 
 If you are using the `vhpc-hydrotools` virtual cluster, change into the repository checkout:
 ```sh
