@@ -41,3 +41,4 @@ CAN_05BB001_distributed/
 CAN_05BB001_lumped/
 
 AGENTS.md
+render_assignment_html.sh

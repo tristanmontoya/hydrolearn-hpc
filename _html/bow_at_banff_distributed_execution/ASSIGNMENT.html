@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Scenario 1: Parallel Execution of a Distributed Hydrologic Model</title>
+</head>
+<body>
+<h1>Scenario 1: Parallel Execution of a Distributed Hydrologic Model</h1>
+<p>Read the shared <a href="../ASSIGNMENT.html">Activity Overview</a> before starting this activity. It defines the scenario, learning objectives, and common memo deliverable.</p>
+<p>This activity focuses on a distributed SUMMA-mizuRoute workflow for the Bow River at Banff case. The watershed domain is divided into 52 spatial units called grouped response units (GRUs). SUMMA simulates each GRU independently, and mizuRoute routes the resulting runoff to the basin outlet.</p>
+<p>The workflow is currently implemented as a serial script that executes SUMMA once per GRU. Starting from this serial workflow, you will run the baseline model, modify the SUMMA portion to execute multiple GRUs at the same time, and evaluate how runtime and efficiency change as CPU cores are added.</p>
+<h2>1. Serial Workflow</h2>
+<p>If you are using the <a href="https://github.com/tristanmontoya/vhpc-hydrotools"><code>vhpc-hydrotools</code> virtual cluster</a>, change into the repository checkout:</p>
+<pre><code>cd /workspace/hydrolearn-hpc</code></pre>
+<p>If you are using another Slurm cluster, clone the repository yourself in a location of your choice:</p>
+<pre><code>git clone https://github.com/tristanmontoya/hydrolearn-hpc.git
+cd hydrolearn-hpc</code></pre>
+<p>Then change into the case directory:</p>
+<pre><code>cd bow_at_banff_distributed_execution</code></pre>
+<p>Inspect the following files:</p>
+<pre><code>scripts/run_SUMMA_mizuRoute.sh
+scripts/submit_run.sh</code></pre>
+<p>The workflow script executes SUMMA and mizuRoute, while the submission script requests computing resources from Slurm.</p>
+<p>In <code>run_SUMMA_mizuRoute.sh</code>, SUMMA is executed sequentially over all GRUs using:</p>
+<pre><code>for gru_index in $(seq 1 "${n_gru}"); do
+    "${summa_exe}" -g "${gru_index}" 1 -r never -m "${summa_filemanager}"
+done</code></pre>
+<p>SUMMA supports running a subset of GRUs using the command:</p>
+<pre><code>summa.exe -m master_file -g startGRU countGRU [-r freqRestart]</code></pre>
+<p>where:</p>
+<ul>
+<li><code>startGRU</code> is the first GRU index</li>
+<li><code>countGRU</code> is the number of consecutive GRUs to simulate</li>
+<li><code>-r</code> is the restart control (e.g., <code>never</code> disables restart output)</li>
+</ul>
+<p>In this workflow, each SUMMA model call uses:</p>
+<pre><code>-g "${gru_index}" 1</code></pre>
+<p>which means:</p>
+<ul>
+<li><code>startGRU = gru_index</code></li>
+<li><code>countGRU = 1</code></li>
+</ul>
+<p>Therefore, each SUMMA execution simulates <strong>exactly one GRU</strong>.</p>
+<p>Run the baseline model using Slurm:</p>
+<pre><code>sbatch scripts/submit_run.sh</code></pre>
+<p>Slurm will print a line such as <code>Submitted batch job 123456</code>. Replace <code>123456</code> with your job ID. After completion, record the runtime.</p>
+<p>Runtime can be found using:</p>
+<pre><code>sacct -j 123456 --format=JobID,Elapsed</code></pre>
+<p>or:</p>
+<pre><code>seff 123456</code></pre>
+<p><strong>Deliverable:</strong> the <em>Serial Workflow</em> section of your memo must provide a high-level overview of the workflow and address the following questions:</p>
+<ul>
+<li>What are the roles of SUMMA and mizuRoute in this workflow?</li>
+<li>Why does the serial workflow execute SUMMA once per GRU?</li>
+<li>Which parts of the workflow are naturally parallelizable?</li>
+<li>Why does requesting additional CPU cores through Slurm alone <strong>not</strong> speed up the serial workflow?</li>
+</ul>
+<hr />
+<h2>2. Parallelization</h2>
+<p>The diagram below summarizes the computational pattern used in this scenario: independent spatial units can be distributed across processors before routing and output generation.</p>
+<p><img src="../../figures/workflow_parallel_execution.png" alt="Workflow diagram showing a hydrologic model run divided into independent spatial units that are distributed to processors or nodes before routing and output generation." /></p>
+<h3>2.1 Determine Available Resources</h3>
+<p>Inspect the CPU resources that Slurm can allocate:</p>
+<pre><code>sinfo -N -o "%N %P %c %t"</code></pre>
+<p>The <code>-N</code> option prints one line per node. The <code>-o</code> option selects the output columns:</p>
+<ul>
+<li><code>%N</code>: node name</li>
+<li><code>%P</code>: partition name</li>
+<li><code>%c</code>: number of CPUs on the node</li>
+<li><code>%t</code>: node state</li>
+</ul>
+<p>Use the <code>%c</code> column to identify how many CPU cores a node can provide. In this workflow, the parallel work is created by launching multiple background SUMMA processes from one Slurm task.</p>
+<p>For each experiment, set <code>--cpus-per-task</code> equal to the number of concurrent SUMMA processes you plan to launch. Do not test more processors than the allocated node can provide. On the <code>vhpc-hydrotools</code> virtual cluster, use small processor counts such as 1, 2, 3, and 4. On an actual Slurm cluster, use processor counts that are allowed by the partition, account, and allocation limits for the system you are using.</p>
+<h3>2.2 Modify the Workflow</h3>
+<p>Convert the workflow to execute two GRU batches simultaneously by replacing the serial SUMMA loop with two background processes.</p>
+<p>Replace the serial loop:</p>
+<pre><code>for gru_index in $(seq 1 "${n_gru}"); do
+    "${summa_exe}" -g "${gru_index}" 1 -r never -m "${summa_filemanager}"
+done</code></pre>
+<p>with:</p>
+<pre><code>"${summa_exe}" -m "${summa_filemanager}" -g 1 26 -r never &amp;
+"${summa_exe}" -m "${summa_filemanager}" -g 27 26 -r never &amp;
+wait</code></pre>
+<ul>
+<li><code>&amp;</code> launches a process in the background so that both SUMMA simulations execute concurrently.</li>
+<li><code>wait</code> pauses the script until <strong>both</strong> SUMMA processes have completed before continuing to mizuRoute.</li>
+</ul>
+<h3>2.3 Modify the Slurm Submission Script</h3>
+<p>Update the Slurm submission script so the requested resources match the parallel workflow.</p>
+<p>For example, modify</p>
+<pre><code>#SBATCH --cpus-per-task=1</code></pre>
+<p>to</p>
+<pre><code>#SBATCH --cpus-per-task=2</code></pre>
+<p>Resubmit the job and record the runtime. This two-core run is the first parallel experiment and provides a template for the additional processor counts below.</p>
+<h3>2.4 Additional Processor Counts</h3>
+<p>Repeat the experiment for 3, 4, and additional processor counts, up to the CPU cores available in your Slurm allocation.</p>
+<p>Design approximately balanced GRU assignments for each experiment.</p>
+<p><strong>Deliverable:</strong> the <em>Parallelization</em> section of your memo must address the following questions:</p>
+<ul>
+<li>Why can independent GRUs execute concurrently?</li>
+<li>Why must both the workflow script <strong>and</strong> the Slurm submission script be modified?</li>
+<li>How did you divide the 52 GRUs among processors?</li>
+</ul>
+<hr />
+<h2>3. Performance Evaluation</h2>
+<p>Complete the following table.</p>
+<table>
+<thead>
+<tr>
+<th>CPU Cores</th>
+<th>Runtime</th>
+<th>Speedup</th>
+<th>Parallel Efficiency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>2</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>3</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Largest Tested</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Compute the following quantities:</p>
+<ul>
+<li>Speedup relative to the one-core case: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>S</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>T</mi><mn>1</mn></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><msub><mi>T</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">S_p(N) = T_1(N) / T_p(N)</annotation></semantics></math></li>
+<li>Strong-scaling efficiency with respect to CPU cores: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>E</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>S</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mi>p</mi></mrow><annotation encoding="application/x-tex">E_p(N) = S_p(N) / p</annotation></semantics></math></li>
+</ul>
+<p>Here, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>N</mi><annotation encoding="application/x-tex">N</annotation></semantics></math> is the fixed distributed simulation workload, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math> is the number of CPU cores, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mn>1</mn></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">T_1(N)</annotation></semantics></math> is the one-core runtime, and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">T_p(N)</annotation></semantics></math> is the runtime using <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math> cores.</p>
+<p>Discuss:</p>
+<ul>
+<li>Did adding CPU cores improve runtime?</li>
+<li>Was the speedup close to ideal?</li>
+<li>Are these strong-scaling or weak-scaling experiments?</li>
+<li>Which processor count provides the best compromise between runtime and efficiency?</li>
+</ul>
+<p><strong>Deliverable:</strong> the <em>Performance Evaluation</em> section of your memo must report the runtime and performance table, the speedup values, and the parallel efficiency values. Briefly interpret whether adding CPU cores improved runtime and whether the speedup was close to ideal.</p>
+<hr />
+<h2>4. Recommendation and Reflection</h2>
+<p><strong>Deliverable:</strong> the <em>Recommendation and Reflection</em> section of your memo must provide recommendations for a research group planning larger distributed simulations and address the following questions:</p>
+<ul>
+<li>What are the major scalability bottlenecks?</li>
+<li>When does adding processors become inefficient?</li>
+<li>Would larger watersheds, for example 1000 GRUs, benefit more from this strategy?</li>
+</ul>
+<hr />
+<h2>5. Reproducibility Appendix</h2>
+<p>At the end of your memo, include an appendix that contains the information needed to reproduce your results.</p>
+<p><strong>Deliverable:</strong> the <em>Reproducibility Appendix</em> section of your memo must include:</p>
+<ul>
+<li>The version of <code>run_SUMMA_mizuRoute.sh</code> used for each processor count.</li>
+<li>The version of <code>submit_run.sh</code> used for each processor count.</li>
+<li>The runtime and performance table.</li>
+<li>The Slurm resource information used to choose processor counts:</li>
+</ul>
+<pre><code>sinfo -N -o "%N %P %c %t"</code></pre>
+</body>
+</html>

@@ -1,4 +1,4 @@
-# Sample Solution: Part 1
+# Sample Solution: Scenario 1
 
 ## 1. Serial Workflow
 
@@ -32,7 +32,7 @@ The Slurm submission script is also modified:
 Both files must change:
 
 - `run_SUMMA_mizuRoute.sh` determines how many processes execute.
-- `submit_SUMMA.sh` reserves enough CPU resources for those processes.
+- `submit_run.sh` reserves enough CPU resources for those processes.
 
 Example balanced decompositions:
 
