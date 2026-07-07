@@ -1,8 +1,6 @@
 # Scenario 2: Parallel Calibration of a Lumped Hydrologic Model
 
-Read the shared [Activity Overview](../ASSIGNMENT.md) before starting this activity. It defines the scenario, learning objectives, and common memo deliverable.
-
-This activity focuses on a lumped hydrologic model calibration workflow for the Bow River at Banff case. Starting from a serial calibration workflow, you will convert it to a parallel workflow that uses Slurm and MPI, then run a simple scaling test to evaluate the performance of the parallel workflow.
+This activity focuses on a lumped hydrologic model calibration workflow for the Bow River basin upstream of the Banff streamflow gauge in Alberta, Canada. Starting from a serial calibration workflow, you will convert it to a parallel workflow that uses Slurm and MPI, then run a simple scaling test to evaluate the performance of the parallel workflow.
 
 ## 1. Serial Workflow
 
@@ -10,23 +8,23 @@ This activity uses OSTRICH to calibrate a lumped SUMMA model for the Bow River b
 
 Compared with the distributed workflow in Scenario 1, this setup is simplified so that the calibration runs quickly enough for an instructional scaling test. The SUMMA model is configured in lumped form, where all spatial units are aggregated into a single basin representation. A separate routing model, which would normally combine the results from the spatial units to produce a single streamflow hydrograph, is not required in the lumped model.
 
-The diagram below summarizes the serial calibration pattern: OSTRICH proposes one candidate parameter set, the lumped model simulates streamflow, and the objective function is evaluated by comparing the simulated streamflow to observed streamflow.
+Figure 7 summarizes the serial calibration pattern: OSTRICH proposes one candidate parameter set, the lumped model simulates streamflow, and the objective function is evaluated by comparing the simulated streamflow to observed streamflow.
 
 ![Calibration workflow diagram showing one candidate parameter set evaluated by a lumped model before the optimizer proposes new trial parameters.](../figures/calibration_lumped.png)
 
 Conceptually, the calibration problem is to find the normalized calibration vector $\boldsymbol{\theta}^*$ that maximizes agreement between simulated and observed streamflow:
 
 $$
-\boldsymbol{\theta}^* = \operatorname*{arg\,max}_{\boldsymbol{\theta} \in [0,1]^N} \operatorname{KGE}\!\left(\mathbf{q}_s(\boldsymbol{\theta}), \mathbf{q}_o\right).
+\boldsymbol{\theta}^* = \operatorname*{arg\,max}_{\boldsymbol{\theta} \in [0,1]^d} \operatorname{KGE}\!\left(\mathbf{q}_s(\boldsymbol{\theta}), \mathbf{q}_o\right).
 $$
 
-Here, $\boldsymbol{\theta}$ is the normalized calibration vector, $\mathbf{q}_s(\boldsymbol{\theta})$ is the simulated streamflow produced by SUMMA for that parameter vector, $\mathbf{q}_o$ is the observed streamflow over the calibration period, and KGE is the Kling-Gupta efficiency:
+Here, $\boldsymbol{\theta}$ is the calibration vector normalized to $[0,1]^d$, where $d$ is the number of parameters being calibrated, $\mathbf{q}_s(\boldsymbol{\theta})$ is the simulated streamflow produced by SUMMA for that parameter vector, $\mathbf{q}_o$ is the observed streamflow over the calibration period, and KGE is the Kling-Gupta efficiency.
 
 $$
 \operatorname{KGE} = 1 - \sqrt{(r - 1)^2 + (\alpha - 1)^2 + (\beta - 1)^2},
 $$
 
-where $r$ is the correlation, $\alpha$ is the variability ratio, and $\beta$ is the mean bias ratio. Larger KGE values indicate better agreement between simulated and observed streamflow.
+where $r = \operatorname{corr}(\mathbf{q}_s, \mathbf{q}_o)$ is the correlation, $\alpha = \frac{\sigma_s}{\sigma_o}$ is the variability ratio, and $\beta = \frac{\mu_s}{\mu_o}$ is the mean bias ratio. Larger KGE values indicate better agreement between simulated and observed streamflow.
 
 If you are using the [`vhpc-hydrotools` virtual cluster](https://github.com/tristanmontoya/vhpc-hydrotools), change into the repository checkout:
 
@@ -41,7 +39,7 @@ git clone https://github.com/tristanmontoya/hydrolearn-hpc.git
 cd hydrolearn-hpc
 ```
 
-The `main` branch contains a working calibration workflow configured to use the serial DDS algorithm, which evaluates one candidate parameter set at a time. Before editing anything, it is important to understand the structure of the serial program. First, change into the case directory:
+The repository contains a working calibration workflow configured to use the serial DDS algorithm, which evaluates one candidate parameter set at a time. Before editing anything, it is important to understand the structure of the serial program. First, change into the case directory:
 
 ```sh
 cd bow_at_banff_lumped_calibration
@@ -58,7 +56,7 @@ scripts/save_best.sh
 
 The file `ostIn.txt` defines the OSTRICH calibration workflow, which currently uses `ProgramType DDS`, meaning that the serial dynamic dimensioned search algorithm is used. The `ModelExecutable` line points to `scripts/run_trial.sh`, which runs the SUMMA model and writes the KGE value to `results/KGE.txt`. OSTRICH formulates optimization problems as minimization problems, so `ostIn.txt` defines a negative-KGE cost function and minimizes that value. This is equivalent to maximizing KGE. The `PreserveBestModel` line points to `scripts/save_best.sh`, which copies the best trial parameter file and simulation output to the `output_archive/` directory.
 
-The `scripts/run_ostrich.sh` shell script runs the entire workflow. It launches the serial `ostrich` executable, which reads the `ostIn.txt` file and performs the calibration. The script is shown below:
+The `scripts/run_ostrich.sh` shell script runs the entire workflow. It launches the serial `ostrich` executable, which reads the `ostIn.txt` file and performs the calibration:
 
 ```bash
 #!/usr/bin/env bash
@@ -112,18 +110,18 @@ ls output_archive
 
 ## 2. Parallelization
 
-OSTRICH includes a parallel version of the DDS algorithm called `ParallelDDS`, which evaluates multiple candidate parameter sets at the same time. The parallel DDS algorithm uses MPI to distribute the model evaluations across multiple worker ranks. Each worker rank runs a separate instance of the SUMMA model with a different candidate parameter set, and the results are sent back to the coordinator rank, which manages the optimization process. We will now modify the serial workflow to use the parallel DDS algorithm.
+OSTRICH includes a parallel version of the DDS algorithm, which evaluates multiple candidate parameter sets at the same time. The parallel DDS algorithm uses MPI to distribute the model evaluations across multiple worker ranks. Each worker rank runs a separate instance of the SUMMA model with a different candidate parameter set, and the results are sent back to the coordinator rank, which manages the optimization process. We will now modify the serial workflow to use the parallel DDS algorithm.
 
-The diagram below summarizes a generic parallel calibration pattern: a batch of candidate parameter sets is dispatched to workers, independent model evaluations run concurrently, and the optimizer collects objective function values before proposing another batch. In this assignment, the worker evaluation is implemented by `scripts/run_trial.sh`, which runs the lumped SUMMA model and writes the KGE value used by OSTRICH.
+Figure 8 summarizes a generic parallel calibration pattern: a batch of candidate parameter sets is dispatched to workers, independent model evaluations run concurrently, and the optimizer collects objective function values before proposing another batch. In this assignment, the worker evaluation is implemented by `scripts/run_trial.sh`, which runs the lumped SUMMA model and writes the KGE value used by OSTRICH.
 
 ![Parallel calibration workflow diagram showing a batch of parameter candidates dispatched to workers, evaluated independently, and collected by the optimizer.](../figures/calibration_batch_lumped.png)
 
 Open `ostIn.txt`. The serial file needs three main changes:
-1. Select the parallel DDS algorithm
+1. Select the `ParallelDDS` algorithm
 2. Tell OSTRICH how to create worker directories
-3. Replace the serial DDS algorithm block that specifies the parameters with a `ParallelDDS` block using the same parameters.
+3. Replace the serial `DDS` algorithm block that specifies the parameters with a `ParallelDDS` block using the same parameters.
 
-First, change the program type from serial DDS to `ParallelDDS`:
+First, change the program type from the serial `DDS` to `ParallelDDS`.
 
 ```diff
 -ProgramType  DDS
@@ -150,7 +148,7 @@ This tells OSTRICH to create separate working directories such as `ostrich_worke
 +EndExtraDirs
 ```
 
-Finally, replace the serial DDS algorithm block with a `ParallelDDS` block:
+Finally, replace the serial DDS algorithm block with a ParallelDDS block.
 
 ```diff
 -BeginDDSAlg
@@ -164,15 +162,9 @@ Finally, replace the serial DDS algorithm block with a `ParallelDDS` block:
 
 Next, open `scripts/run_ostrich.sh` again and modify the serial Slurm script so that it launches `OstrichMPI` with `srun`.
 
-ParallelDDS uses one coordinator MPI rank in addition to the model-evaluation worker ranks, so each run needs one more total task than the number of model-evaluation workers.
+The parallel DDS algorithm uses one coordinator MPI rank in addition to the model-evaluation worker ranks. Therefore, a run with $p$ workers needs $p + 1$ total MPI tasks. The total number of tasks launched by `srun` is set to `task_count=$((worker_count + 1))`, which accounts for the coordinator rank.
 
-On the `vhpc-hydrotools` virtual cluster, request an allocation of 5 total tasks (`--ntasks=5`) so that the largest scaling case, which uses four model-evaluation workers plus one coordinator, can run. The virtual cluster imitates a small Slurm cluster with two nodes, each with four cores, although in actuality it runs on your local machine and uses whatever resources are available.
-
-The script below uses the virtual cluster resource layout; if you are using another Slurm cluster, you should adapt `--nodes`, `--ntasks`, and `--ntasks-per-node` to make effective use of the available hardware. You may also need to adjust the `--time` limit to allow enough time for the scaling study to complete.
-
-Although the instructions assume a maximum of four model-evaluation workers, you may choose to run larger cases, for example, by changing the `for worker_count in 1 2 4; do` line in the script below. If you do so, make sure that your Slurm allocation has enough resources to run the largest scaling case, plus one coordinator rank.
-
-As the script iterates over the worker counts, each `srun` call should request one more total task than the number of workers. The first scaling run therefore uses one model-evaluation worker and one coordinator, for a total of 2 MPI ranks. This `nworkers=1` run is the baseline for the strong-scaling calculation. Use the complete launch script below; its central parallelization step is the `srun --ntasks="${task_count}" OstrichMPI` call inside the worker-count loop, and the remaining output-handling lines preserve reproducible timing and best-model archives.
+The launch script below is configured for the `vhpc-hydrotools` virtual cluster. It requests 5 total tasks (`--ntasks=5`) so that the largest scaling case in the loop, which uses four model-evaluation workers plus one coordinator, can run. If you are using another Slurm cluster, adapt `--nodes`, `--ntasks`, `--ntasks-per-node`, and `--time` to fit your allocation and the largest worker count you plan to test.
 
 ```bash
 #!/usr/bin/env bash
@@ -194,7 +186,7 @@ printf "nworkers,ntasks,seconds,best_kge,archive_dir\n" > "${summary_file}"
 mkdir -p "${archive_root}"
 cp ostIn.txt scripts/run_ostrich.sh "${archive_root}/"
 
-# ParallelDDS uses one coordinator rank in addition to the worker ranks
+# The coordinator rank is required in addition to the worker ranks
 for worker_count in 1 2 4; do
     # Calculate the total number of tasks needed for this worker count
     task_count=$((worker_count + 1))
@@ -236,7 +228,7 @@ done
 **Deliverable:** the *Parallelization* section of your memo must address the following questions:
 
 - Why do the worker directories need multiple copies of `model`, `obs`, `ostrich`, and `scripts`?
-- If the `MaxIterations` is kept fixed at 40 and we increase the number of MPI ranks, and the random seed is fixed, will the same parameter sets be evaluated in each run?
+- If `MaxIterations` is kept fixed at 40 and we increase the number of MPI ranks, and the random seed is fixed, will the same parameter sets be evaluated in each run?
 
 ## 3. Performance Evaluation
 
@@ -273,16 +265,21 @@ Based on the summary file, create a table with these columns:
 - Number of model-evaluation workers
 - Runtime in seconds
 - Speedup relative to the one-worker case
-- Strong-scaling efficiency with respect to the number of workers
+- Strong scaling efficiency with respect to the number of workers
 
 Compute the following quantities using the notation from the module slides:
 
 - Speedup relative to the one-worker case: $S_p(N) = T_1(N) / T_p(N)$
-- Strong-scaling efficiency with respect to model-evaluation workers: $E_p(N) = S_p(N) / p$
+- Strong scaling efficiency with respect to model-evaluation workers: $E_p(N) = S_p(N) / p$
 
-Here, $N$ is the fixed calibration workload, $p$ is the number of model-evaluation workers, $T_1(N)$ is the runtime using one model-evaluation worker, and $T_p(N)$ is the runtime using $p$ model-evaluation workers. The coordinator rank is required for `ParallelDDS`, but it is not counted as a model-evaluation worker in the efficiency calculation.
+Here, $N$ is the fixed calibration workload, $p$ is the number of model-evaluation workers, $T_1(N)$ is the runtime using one model-evaluation worker, and $T_p(N)$ is the runtime using $p$ model-evaluation workers. The coordinator rank is required for the parallel DDS algorithm, but it is not counted as a model-evaluation worker in the efficiency calculation.
 
-**Deliverable:** the *Performance Evaluation* section of your memo must report the summary file, the strong-scaling table, the speedup values, and the parallel efficiency values. Briefly interpret whether adding workers improved runtime and whether the speedup was close to ideal.
+**Deliverable:** the *Performance Evaluation* section of your memo must report the summary file, the strong scaling table, speedup values, and parallel efficiency values. It must also address the following questions:
+
+- Did adding model-evaluation workers improve runtime?
+- Was the speedup close to ideal?
+- Are these strong scaling or weak scaling experiments?
+- How does the coordinator rank affect the efficiency calculation?
 
 ## 4. Recommendation and Reflection
 
