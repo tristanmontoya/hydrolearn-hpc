@@ -1,7 +1,7 @@
 # Insert MERIT Hydro elevation in SUMMA set up
 # Inserts elevation of each HRU into the attributes `.nc` file. The intersection code stores this value in field `elev_mean`. 
 #
-# If the field `settings_summa_connect_HRUs` is set to `yes` in the control file, this script also finds the downslope HRU (attribute `downHRUindex`) for the HRUs within each GRU. The most downstream HRU (i.e. the GRU outlet) is set to `0` to follow SUMMA conventions. If `settings_summa_connect_HRUs` is set to `no`, all HRUs are modelled as indepdendent columns and outflow from all HRUs inside each GRU is combined into basin-average outflow. No further action is needed, as `downHRUindex` for each HRU has already been set to `0`.
+# If the field `settings_summa_connect_HRUs` is set to `yes` in the control file, this script also finds the downslope HRU (attribute `downHRUindex`) for the HRUs within each GRU. The most downstream HRU (i.e. the GRU outlet) is set to `0` to follow SUMMA conventions. If `settings_summa_connect_HRUs` is set to `no`, all HRUs are modeled as independent columns and outflow from all HRUs inside each GRU is combined into basin-average outflow. No further action is needed, as `downHRUindex` for each HRU has already been set to `0`.
 
 # modules
 import os

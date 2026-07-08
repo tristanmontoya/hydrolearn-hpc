@@ -35,7 +35,7 @@
 </style>
 </head>
 <body>
-<p>This activity focuses on a distributed SUMMA-mizuRoute workflow for the Bow River basin in Alberta, Canada. The watershed domain is divided into 52 spatial units called grouped response units (GRUs). In this model configuration, SUMMA simulates each GRU independently, and mizuRoute routes the resulting runoff to the basin outlet, where streamflow is compared to observations at the Banff streamflow gauge.</p>
+<p>This scenario focuses on a distributed SUMMA-mizuRoute workflow for the Bow River basin in Alberta, Canada. The watershed domain is divided into 52 spatial units called grouped response units (GRUs). In this model configuration, SUMMA simulates each GRU independently, and mizuRoute routes the resulting runoff to the basin outlet, where streamflow is compared to observations at the Banff streamflow gauge.</p>
 <p>The workflow is currently implemented as a serial script that executes SUMMA once per GRU. Starting from this serial workflow, you will run the baseline model, modify the SUMMA portion to execute multiple GRUs at the same time, and evaluate how runtime and efficiency change as CPU cores are added.</p>
 <h3>1. Serial Workflow</h3>
 <p>If you are using the <a href="https://github.com/tristanmontoya/vhpc-hydrotools"><code>vhpc-hydrotools</code> virtual cluster</a>, change into the repository checkout:</p>
@@ -52,16 +52,23 @@ scripts/submit_run.sh</code></pre>
 <pre class="code-box"><code>for gru_index in $(seq 1 "${n_gru}"); do
     "${summa_exe}" -g "${gru_index}" 1 -r never -m "${summa_filemanager}"
 done</code></pre>
-<p>SUMMA can run a contiguous subset of GRUs with this command syntax.</p>
+<p>SUMMA can run a subset of consecutively numbered GRUs with this command syntax:</p>
 <pre class="code-box"><code>summa.exe -m master_file -g startGRU countGRU [-r freqRestart]</code></pre>
 <p>In this command, <code>startGRU</code> is the first GRU index, <code>countGRU</code> is the number of consecutive GRUs to simulate, and <code>-r</code> controls restart output. For example, <code>-r never</code> disables restart output.</p>
-<p>In this workflow, each SUMMA model call passes one GRU at a time.</p>
+<p>In this workflow, each SUMMA model call passes one GRU at a time:</p>
 <pre class="code-box"><code>-g "${gru_index}" 1</code></pre>
 <p>This sets <code>startGRU = gru_index</code> and <code>countGRU = 1</code>, so each SUMMA execution simulates <strong>exactly one GRU</strong>.</p>
 <p>Submit the baseline model through Slurm:</p>
 <pre class="code-box"><code>sbatch scripts/submit_run.sh</code></pre>
-<p>Slurm will print a line such as <code>Submitted batch job 123456</code>. Replace <code>123456</code> with your job ID. After completion, record the runtime from Slurm accounting:</p>
-<pre class="code-box"><code>sacct -j 123456 --format=JobID,Elapsed</code></pre>
+<p>Slurm will print a line such as <code>Submitted batch job 123456</code>. Replace <code>123456</code> with your job ID when checking the queue:</p>
+<pre class="code-box"><code>squeue -j 123456</code></pre>
+<p>After the job finishes, use the same job ID to inspect the Slurm output and diagnostics:</p>
+<pre class="code-box"><code>cat summa_123456.out
+cat summa_123456.err
+cat results/KGE.txt
+ls results/obs_vs_sim.png</code></pre>
+<p>Then record the allocated CPU count and runtime from Slurm accounting:</p>
+<pre class="code-box"><code>sacct -j 123456 --format=JobID,NCPUS,Elapsed</code></pre>
 <p><strong>Deliverable:</strong> the <em>Serial Workflow</em> section of your memo must provide a high-level overview of the workflow and address the following questions:</p>
 <ul>
 <li>What are the roles of SUMMA and mizuRoute in this workflow?</li>
@@ -71,8 +78,8 @@ done</code></pre>
 </ul>
 <h3>2. Parallelization</h3>
 <p>Figure 6 summarizes the computational pattern used in this scenario: independent spatial units can be distributed across processors before routing and output generation.</p>
-<figure style="text-align: center; margin-bottom: 1.5em;"><img src="/asset-v1:CIROH_HydroLearn+HPC201+2026+type@asset+block@workflow_parallel_execution.png" alt="Workflow diagram showing a hydrologic model run divided into independent spatial units that are distributed to processors or nodes before routing and output generation." style="width: 85%; height: auto;" />
-<figcaption><strong>Figure 6.</strong> Distributed modelling workflow.</figcaption>
+<figure style="text-align: center; margin-bottom: 1.5em;"><img src="/asset-v1:CIROH_HydroLearn+HPC201+2026+type@asset+block@workflow_parallel_execution.png" alt="Workflow diagram showing a hydrologic model run divided into independent spatial units that are distributed to processors or nodes before routing and output generation." style="width: 70%; height: auto;" />
+<figcaption><strong>Figure 6.</strong> Distributed modeling workflow.</figcaption>
 </figure>
 <h4>2.1 Determine Available Resources</h4>
 <p>Inspect the CPU resources that Slurm can allocate:</p>
@@ -93,9 +100,9 @@ wait</code></pre>
 <pre class="code-box"><code>#SBATCH --cpus-per-task=1</code></pre>
 <p>to</p>
 <pre class="code-box"><code>#SBATCH --cpus-per-task=2</code></pre>
-<p>Resubmit the job and record the runtime. This two-core run is the first parallel experiment and provides a template for the additional processor counts below.</p>
+<p>Resubmit the job and record the allocated CPU count and runtime from the top-level job row in the Slurm accounting output, not the <code>.batch</code> or <code>.extern</code> rows. This two-core run is the first parallel experiment and provides a template for the additional processor counts below.</p>
 <h4>2.4 Additional Processor Counts</h4>
-<p>Repeat the experiment for 3, 4, and additional processor counts, up to the number of CPU cores available in your Slurm allocation. Design approximately balanced GRU assignments for each experiment.</p>
+<p>Repeat the experiment for 3, 4, and then each additional processor count up to the maximum number of CPU cores available in your current Slurm allocation, using approximately balanced GRU assignments for each experiment. Together with the serial and two-core cases, this gives a scaling sequence of 1, 2, 3, 4, ..., maximum available CPU cores. On the <code>vhpc-hydrotools</code> virtual cluster, the maximum available count may be limited by the CPU cores on your local machine. Run one processor count at a time because each run writes to the same case directory.</p>
 <p><strong>Deliverable:</strong> the <em>Parallelization</em> section of your memo must address the following questions:</p>
 <ul>
 <li>Why can independent GRUs execute concurrently?</li>
@@ -103,80 +110,44 @@ wait</code></pre>
 <li>How did you divide the 52 GRUs among processors?</li>
 </ul>
 <h3>3. Performance Evaluation</h3>
-<p>Complete the following table.</p>
-<table class="directive-table">
-<thead>
-<tr>
-<th>CPU Cores</th>
-<th>Runtime</th>
-<th>Speedup</th>
-<th>Parallel Efficiency</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td>2</td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td>3</td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td>4</td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td>Largest Tested</td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-</tbody>
-</table>
-<p>Compute the following quantities:</p>
+<p>After each job finishes, record the allocated CPU count and runtime using Slurm accounting output:</p>
+<pre class="code-box"><code>sacct -j 123456 --format=JobID,NCPUS,Elapsed</code></pre>
+<p>Use the top-level job rows in the <code>sacct</code> output, not the <code>.batch</code> or <code>.extern</code> rows. Based on the Slurm accounting output, create a table with these columns:</p>
 <ul>
-<li>Speedup relative to the one-core case: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>S</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>T</mi><mn>1</mn></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><msub><mi>T</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">S_p(N) = T_1(N) / T_p(N)</annotation></semantics></math></li>
-<li>Strong scaling efficiency with respect to CPU cores: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>E</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>S</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mi>p</mi></mrow><annotation encoding="application/x-tex">E_p(N) = S_p(N) / p</annotation></semantics></math></li>
+<li>Slurm job ID</li>
+<li>CPU cores</li>
+<li>Wall-clock runtime from the Slurm accounting output</li>
+<li>Speedup relative to the one-core case</li>
+<li>Strong-scaling efficiency with respect to CPU cores</li>
 </ul>
-<p>Here, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>N</mi><annotation encoding="application/x-tex">N</annotation></semantics></math> is the fixed distributed simulation workload, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math> is the number of CPU cores, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mn>1</mn></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">T_1(N)</annotation></semantics></math> is the one-core runtime, and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">T_p(N)</annotation></semantics></math> is the runtime using <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math> cores.</p>
-<p>Use the table and formulas to interpret the scaling behaviour.</p>
-<p><strong>Deliverable:</strong> the <em>Performance Evaluation</em> section of your memo must report the runtime and performance table, speedup values, and parallel efficiency values. It must also address the following questions:</p>
+<p>Use the following formulas to compute the speedup and strong-scaling efficiency:</p>
+<ul>
+<li>Speedup relative to the one-core case: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>S</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>T</mi><mn>1</mn></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><msub><mi>T</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo></mrow></math></li>
+<li>Strong-scaling efficiency with respect to CPU cores: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>E</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>S</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mi>p</mi></mrow></math></li>
+</ul>
+<p>Following the notation from Section 1.3 of this module, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mi>N</mi></math> represents the fixed distributed simulation workload, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mi>p</mi></math> is the number of CPU cores from the <code>NCPUS</code> field in the top-level Slurm accounting row, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>T</mi><mn>1</mn></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo></mrow></math> is the one-core runtime, and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>T</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo></mrow></math> is the runtime using <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mi>p</mi></math> cores.</p>
+<p><strong>Deliverable:</strong> the <em>Performance Evaluation</em> section of your memo must report the Slurm job IDs, the strong scaling table, speedup values, and parallel efficiency values. It must also address the following questions:</p>
 <ul>
 <li>Did adding CPU cores improve runtime?</li>
 <li>Was the speedup close to ideal?</li>
-<li>Are these strong scaling or weak scaling experiments?</li>
-<li>Does adding CPU cores eventually become inefficient on this cluster?</li>
-<li>What processor count would you recommend for similar workflows run on the same cluster in the future?</li>
+<li>If the speedup was not ideal, what factors might have limited the parallel efficiency of this distributed model execution workflow?</li>
 </ul>
 <h3>4. Recommendation and Reflection</h3>
-<p><strong>Deliverable:</strong> the <em>Recommendation and Reflection</em> section of your memo must provide recommendations for a research group planning larger distributed simulations and address the following questions:</p>
+<p><strong>Deliverable:</strong> the <em>Recommendation and Reflection</em> section of your memo must provide recommendations for a hydrologic modeling research group planning larger distributed simulations and address the following questions:</p>
 <ul>
-<li>What are the major scalability bottlenecks in the workflow?</li>
-<li>How should the research group use the scaling results when choosing resources for future distributed simulations?</li>
-<li>How, if at all, would you expect parallel efficiency to change if the number of GRUs were increased to 100, 200, or more?</li>
+<li>What is the practical value of parallelizing this distributed model execution workflow, and how might the research group benefit from using this capability in their work?</li>
+<li>How could the research group use the scaling results from studies such as this one when selecting resource layout for future distributed simulations?</li>
+<li>Do the results suggest a tradeoff between minimizing the absolute wall-clock runtime and using CPU resources efficiently? How might the research group balance these two objectives when planning future distributed simulations?</li>
 </ul>
 <h3>5. Reproducibility Appendix</h3>
 <p>At the end of your memo, include an appendix that contains the information needed to reproduce your results.</p>
 <p><strong>Deliverable:</strong> the <em>Reproducibility Appendix</em> section of your memo must include:</p>
 <ul>
-<li>The version of <code>run_SUMMA_mizuRoute.sh</code> used for each processor count.</li>
-<li>The version of <code>submit_run.sh</code> used for each processor count.</li>
-<li>The runtime and performance table.</li>
-<li>The Slurm resource information used to choose processor counts:</li>
+<li>The final versions of <code>scripts/run_SUMMA_mizuRoute.sh</code> and <code>scripts/submit_run.sh</code> used for the maximum CPU count.</li>
+<li>The Slurm resource information from <code>sinfo -N -o "%N %P %c %t"</code> used to choose processor counts.</li>
+<li>The Slurm accounting output from <code>sacct -j 123456 --format=JobID,NCPUS,Elapsed</code> for each job.</li>
+<li>The <code>summa_123456.out</code> and <code>summa_123456.err</code> log files for the maximum CPU run.</li>
+<li>The final diagnostic outputs from the maximum CPU run: <code>results/KGE.txt</code> and <code>results/obs_vs_sim.png</code>.</li>
 </ul>
-<pre class="code-box"><code>sinfo -N -o "%N %P %c %t"</code></pre>
 </body>
 </html>

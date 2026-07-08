@@ -1,10 +1,10 @@
 # Scenario 2: Parallel Calibration of a Lumped Hydrologic Model
 
-This activity focuses on a lumped hydrologic model calibration workflow for the Bow River basin upstream of the Banff streamflow gauge in Alberta, Canada. Starting from a serial calibration workflow, you will convert it to a parallel workflow that uses Slurm and MPI, then run a simple scaling test to evaluate the performance of the parallel workflow.
+This scenario focuses on a lumped hydrologic model calibration workflow for the Bow River basin upstream of the Banff streamflow gauge in Alberta, Canada. Starting from a serial calibration workflow, you will convert it to a parallel workflow that uses Slurm and MPI, then run a simple scaling test to evaluate the performance of the parallel workflow.
 
 ## 1. Serial Workflow
 
-This activity uses OSTRICH to calibrate a lumped SUMMA model for the Bow River basin upstream of the Banff streamflow gauge. The starting point is a serial calibration workflow that uses the Dynamically Dimensioned Search (DDS) algorithm.
+In this scenario, the OSTRICH optimization toolkit is used to calibrate a lumped SUMMA model for the Bow River basin upstream of the Banff streamflow gauge. The starting point is a serial calibration workflow that uses the Dynamically Dimensioned Search (DDS) algorithm.
 
 Compared with the distributed workflow in Scenario 1, this setup is simplified so that the calibration runs quickly enough for an instructional scaling test. The SUMMA model is configured in lumped form, where all spatial units are aggregated into a single basin representation. A separate routing model, which would normally combine the results from the spatial units to produce a single streamflow hydrograph, is not required in the lumped model.
 
@@ -15,16 +15,15 @@ Figure 7 summarizes the serial calibration pattern: OSTRICH proposes one candida
 Conceptually, the calibration problem is to find the normalized calibration vector $\boldsymbol{\theta}^*$ that maximizes agreement between simulated and observed streamflow:
 
 $$
-\boldsymbol{\theta}^* = \operatorname*{arg\,max}_{\boldsymbol{\theta} \in [0,1]^d} \operatorname{KGE}\!\left(\mathbf{q}_s(\boldsymbol{\theta}), \mathbf{q}_o\right).
+\boldsymbol{\theta}^* = \operatorname*{arg\,max}_{\boldsymbol{\theta} \in [0,1]^d}\, \operatorname{KGE}\!\left(\mathbf{q}_s(\boldsymbol{\theta}), \mathbf{q}_o\right).
 $$
 
-Here, $\boldsymbol{\theta}$ is the calibration vector normalized to $[0,1]^d$, where $d$ is the number of parameters being calibrated, $\mathbf{q}_s(\boldsymbol{\theta})$ is the simulated streamflow produced by SUMMA for that parameter vector, $\mathbf{q}_o$ is the observed streamflow over the calibration period, and KGE is the Kling-Gupta efficiency.
+Here, $\boldsymbol{\theta}$ is the calibration vector normalized to $[0,1]^d$, where $d$ is the number of parameters being calibrated, $\mathbf{q}_s(\boldsymbol{\theta})$ is the simulated streamflow produced by SUMMA for that parameter vector, $\mathbf{q}_o$ is the observed streamflow over the calibration period, and KGE is the Kling-Gupta efficiency, which is defined in terms of the correlation $r = \operatorname{corr}(\mathbf{q}_s, \mathbf{q}_o)$, variability ratio $\alpha = \sigma_s / \sigma_o$, and mean bias ratio $\beta = \mu_s / \mu_o$ as
 
 $$
-\operatorname{KGE} = 1 - \sqrt{(r - 1)^2 + (\alpha - 1)^2 + (\beta - 1)^2},
+\operatorname{KGE} = 1 - \sqrt{(r - 1)^2 + (\alpha - 1)^2 + (\beta - 1)^2}.
 $$
-
-where $r = \operatorname{corr}(\mathbf{q}_s, \mathbf{q}_o)$ is the correlation, $\alpha = \frac{\sigma_s}{\sigma_o}$ is the variability ratio, and $\beta = \frac{\mu_s}{\mu_o}$ is the mean bias ratio. Larger KGE values indicate better agreement between simulated and observed streamflow.
+Larger KGE values indicate better agreement between simulated and observed streamflow.
 
 If you are using the [`vhpc-hydrotools` virtual cluster](https://github.com/tristanmontoya/vhpc-hydrotools), change into the repository checkout:
 
@@ -97,7 +96,7 @@ squeue -j 123456
 After the job finishes, use the same job ID to inspect the Slurm log and archived best model:
 
 ```sh
-less slurm-serial-calibration-123456.out
+cat slurm-serial-calibration-123456.out
 cat output_archive/KGE.txt
 ls output_archive
 ```
@@ -112,7 +111,7 @@ ls output_archive
 
 OSTRICH includes a parallel version of the DDS algorithm, which evaluates multiple candidate parameter sets at the same time. The parallel DDS algorithm uses MPI to distribute the model evaluations across multiple worker ranks. Each worker rank runs a separate instance of the SUMMA model with a different candidate parameter set, and the results are sent back to the coordinator rank, which manages the optimization process. We will now modify the serial workflow to use the parallel DDS algorithm.
 
-Figure 8 summarizes a generic parallel calibration pattern: a batch of candidate parameter sets is dispatched to workers, independent model evaluations run concurrently, and the optimizer collects objective function values before proposing another batch. In this assignment, the worker evaluation is implemented by `scripts/run_trial.sh`, which runs the lumped SUMMA model and writes the KGE value used by OSTRICH.
+Figure 8 summarizes a generic parallel calibration pattern: a batch of candidate parameter sets is dispatched to workers, independent model evaluations run concurrently, and the optimizer collects objective function values before proposing another batch. In the repository, the worker evaluation is implemented by `scripts/run_trial.sh`, which runs the lumped SUMMA model and writes the KGE value used by OSTRICH.
 
 ![Parallel calibration workflow diagram showing a batch of parameter candidates dispatched to workers, evaluated independently, and collected by the optimizer.](../figures/calibration_batch_lumped.png)
 
@@ -121,108 +120,93 @@ Open `ostIn.txt`. The serial file needs three main changes:
 2. Tell OSTRICH how to create worker directories
 3. Replace the serial `DDS` algorithm block that specifies the parameters with a `ParallelDDS` block using the same parameters.
 
-First, change the program type from the serial `DDS` to `ParallelDDS`.
+First, change the program type from the serial `DDS` to `ParallelDDS` by replacing
 
-```diff
--ProgramType  DDS
-+ProgramType  ParallelDDS
+```text
+ProgramType  DDS
 ```
 
-This changes the OSTRICH optimizer while keeping the model execution workflow intact.
+with the following line:
 
-Next, add a worker-directory prefix after `ModelExecutable`:
-
-```diff
- ModelExecutable ./scripts/run_trial.sh
-+ModelSubdir ostrich_worker_
+```text
+ProgramType  ParallelDDS
 ```
 
-This tells OSTRICH to create separate working directories such as `ostrich_worker_0`, `ostrich_worker_1`, and so on, for each MPI rank to write to as they run model simulations in parallel. Immediately after `ModelSubdir`, add a block that specifies the extra directories that each worker needs:
+This changes the OSTRICH optimizer while keeping the model execution workflow intact. Next, after the `ModelExecutable ./scripts/run_trial.sh` line, add a `ModelSubdir` line that specifies the prefix for the worker directories:
 
-```diff
-+BeginExtraDirs
-+model
-+obs
-+ostrich
-+scripts
-+EndExtraDirs
+```text
+ModelSubdir ostrich_worker_
 ```
 
-Finally, replace the serial DDS algorithm block with a ParallelDDS block.
+This tells OSTRICH to create separate working directories such as `ostrich_worker_0`, `ostrich_worker_1`, and so on, for each MPI rank to write to as they run model simulations in parallel. Immediately after the `ModelSubdir` line, add a block that specifies the extra directories that each worker needs:
 
-```diff
--BeginDDSAlg
-+BeginParallelDDSAlg
- PerturbationValue 0.20
- MaxIterations 40
- UseInitialParamValues
--EndDDSAlg
-+EndParallelDDSAlg
+```text
+BeginExtraDirs
+model
+obs
+ostrich
+scripts
+EndExtraDirs
+```
+
+Finally, replace the serial DDS algorithm block
+
+```text
+BeginDDSAlg
+PerturbationValue 0.20
+MaxIterations 40
+UseInitialParamValues
+EndDDSAlg
+```
+
+with the parallel block:
+
+```text
+BeginParallelDDSAlg
+PerturbationValue 0.20
+MaxIterations 40
+UseInitialParamValues
+EndParallelDDSAlg
 ```
 
 Next, open `scripts/run_ostrich.sh` again and modify the serial Slurm script so that it launches `OstrichMPI` with `srun`.
 
-The parallel DDS algorithm uses one coordinator MPI rank in addition to the model-evaluation worker ranks. Therefore, a run with $p$ workers needs $p + 1$ total MPI tasks. The total number of tasks launched by `srun` is set to `task_count=$((worker_count + 1))`, which accounts for the coordinator rank.
+Before choosing the largest worker count, inspect the CPU resources that Slurm can allocate:
 
-The launch script below is configured for the `vhpc-hydrotools` virtual cluster. It requests 5 total tasks (`--ntasks=5`) so that the largest scaling case in the loop, which uses four model-evaluation workers plus one coordinator, can run. If you are using another Slurm cluster, adapt `--nodes`, `--ntasks`, `--ntasks-per-node`, and `--time` to fit your allocation and the largest worker count you plan to test.
+```sh
+sinfo -N -o "%N %P %c %t"
+```
+
+The `-N` option prints one line per node. The `-o` option selects the output columns: `%N` is the node name, `%P` is the partition name, `%c` is the number of CPUs on the node, and `%t` is the node state. Use this information to choose the largest feasible number of MPI tasks for your allocation.
+
+The parallel DDS algorithm uses one coordinator MPI rank in addition to the model-evaluation worker ranks. Therefore, a run with $p$ workers needs $p + 1$ total MPI tasks. The script below uses all tasks allocated by Slurm for the job. In your results table, compute the number of model-evaluation workers as `NTasks - 1` from the Slurm accounting output.
+
+The launch script below is configured for the `vhpc-hydrotools` virtual cluster. It requests 8 total tasks (`--ntasks=8`) by default, which corresponds to seven model-evaluation workers plus one coordinator. In the scaling study below, you will override `--ntasks` when submitting each job. If you are using another Slurm cluster, adapt `--ntasks` and `--time` to fit your allocation and the largest worker count you plan to test.
 
 ```bash
 #!/usr/bin/env bash
 #SBATCH --job-name=parallel-calibration
-#SBATCH --nodes=2
-#SBATCH --ntasks=5
-#SBATCH --ntasks-per-node=4
+#SBATCH --ntasks=8
 #SBATCH --time=08:00:00
 #SBATCH --output=slurm-%x-%j.out
 set -euo pipefail
 
-# Preserve best models in the original case directory
+# Use the submission directory as the source case
+case_dir="${SLURM_SUBMIT_DIR:-${PWD}}"
+
+# Run each job in a separate copied case directory
+run_dir="${case_dir}/scaling_archive_${SLURM_JOB_ID}"
+mkdir -p "${run_dir}"
+cp -R "${case_dir}/ostIn.txt" "${case_dir}/model" "${case_dir}/obs" \
+    "${case_dir}/ostrich" "${case_dir}/scripts" "${run_dir}/"
+cd "${run_dir}"
+
+# Archive best models inside this job directory
 export PARALLEL_CALIBRATION_ROOT="${PWD}"
+export OUTPUT_ARCHIVE_DIR="${PWD}/output_archive"
 
-# Create a summary file for the scaling study
-summary_file="strong_scaling_summary_${SLURM_JOB_ID}.csv"
-archive_root="scaling_archive_${SLURM_JOB_ID}"
-printf "nworkers,ntasks,seconds,best_kge,archive_dir\n" > "${summary_file}"
-mkdir -p "${archive_root}"
-cp ostIn.txt scripts/run_ostrich.sh "${archive_root}/"
-
-# The coordinator rank is required in addition to the worker ranks
-for worker_count in 1 2 4; do
-    # Calculate the total number of tasks needed for this worker count
-    task_count=$((worker_count + 1))
-
-    # Set the output archive directory for this worker-count run
-    run_archive="${archive_root}/workers_${worker_count}"
-    export OUTPUT_ARCHIVE_DIR="${PWD}/${run_archive}/output_archive"
-
-    # Clean previous run artifacts
-    rm -rf ostrich_worker_* Ost*.txt model_run.log "${run_archive}"
-
-    # Make a fresh output archive directory
-    mkdir -p "${OUTPUT_ARCHIVE_DIR}"
-
-    # Start the timer for this worker-count run
-    start_time="${SECONDS}"
-
-    # Run the parallel calibration with the current worker count
-    srun --ntasks="${task_count}" OstrichMPI
-
-    # Calculate the elapsed time for this worker-count run
-    elapsed_seconds=$((SECONDS - start_time))
-
-    # Read the best KGE from the current run into the variable `best_kge`
-    best_kge="NA"
-    if [ -f "${OUTPUT_ARCHIVE_DIR}/KGE.txt" ]; then
-        read -r best_kge _ < "${OUTPUT_ARCHIVE_DIR}/KGE.txt"
-    fi
-
-    # Keep output_archive aligned with the latest completed run
-    rm -rf output_archive
-    cp -r "${OUTPUT_ARCHIVE_DIR}" output_archive
-
-    printf "%s,%s,%s,%s,%s\n" "${worker_count}" "${task_count}" "${elapsed_seconds}" \
-        "${best_kge}" "${run_archive}" >> "${summary_file}"
-done
+# Run the parallel calibration with all allocated tasks
+srun --ntasks="${SLURM_NTASKS}" OstrichMPI
 ```
 
 **Deliverable:** the *Parallelization* section of your memo must address the following questions:
@@ -232,62 +216,76 @@ done
 
 ## 3. Performance Evaluation
 
-Submit the job from the case directory:
+Submit one job for each worker count from the case directory. Set `--ntasks` to $p+1$ where $p$ is the number of model-evaluation workers. The command-line `--ntasks` value overrides the default in `scripts/run_ostrich.sh`, so the script automatically uses the requested task count without an additional argument. Because each job creates a separate copied case directory under `scaling_archive_${SLURM_JOB_ID}/`, these jobs can be submitted at the same time.
 
 ```sh
-cd /path/to/hydrolearn-hpc/bow_at_banff_lumped_calibration
-sbatch scripts/run_ostrich.sh
+sbatch --ntasks=2 scripts/run_ostrich.sh
+sbatch --ntasks=3 scripts/run_ostrich.sh
+sbatch --ntasks=4 scripts/run_ostrich.sh
+sbatch --ntasks=5 scripts/run_ostrich.sh
+sbatch --ntasks=6 scripts/run_ostrich.sh
+sbatch --ntasks=7 scripts/run_ostrich.sh
+sbatch --ntasks=8 scripts/run_ostrich.sh
 ```
 
-Slurm will print a line such as `Submitted batch job 123456`. Replace `123456` with your job ID when checking the queue:
+On a larger Slurm system, continue the same pattern with higher `--ntasks` values if your allocation supports them. You could also submit the jobs in a loop, for example:
+
+```sh
+for ntasks in {2..8}; do
+    sbatch --ntasks="${ntasks}" scripts/run_ostrich.sh
+done
+```
+
+For each of these `sbatch` commands, Slurm will print a line such as `Submitted batch job 123456`, with a different job ID for each submitted job. Replace `123456` with the corresponding job ID when checking the queue:
 
 ```sh
 squeue -j 123456
 ```
 
-After the job finishes, use the same job ID to inspect the Slurm log and archived best model:
+After each job finishes, use the same job ID to inspect the Slurm log and archived best model:
 
 ```sh
-less slurm-parallel-calibration-123456.out
-cat output_archive/KGE.txt
-ls output_archive
+cat slurm-parallel-calibration-123456.out
+cat scaling_archive_123456/output_archive/KGE.txt
+ls scaling_archive_123456/output_archive
 ```
 
-Inspect the summary file, which lists the timings, per-worker archives, and best KGE values:
+Then record the total task count and runtime for each completed job, using Slurm accounting output:
 
 ```sh
-cat strong_scaling_summary_123456.csv
+sacct -j 123456 --format=JobID,NTasks,Elapsed
 ```
 
-Based on the summary file, create a table with these columns:
+Use the top-level job rows in the `sacct` output, not the `.batch` or `.extern` rows. Use `NTasks - 1` as the number of model-evaluation workers. Based on the Slurm accounting output and the per-job archives, create a table with these columns:
 
+- Slurm job ID
 - Total MPI tasks
 - Number of model-evaluation workers
-- Runtime in seconds
+- Best KGE value from the `output_archive/KGE.txt` file
+- Wall-clock runtime from the Slurm accounting output
 - Speedup relative to the one-worker case
-- Strong scaling efficiency with respect to the number of workers
+- Strong-scaling efficiency
 
-Compute the following quantities using the notation from the module slides:
+Use the following formulas to compute the speedup and strong-scaling efficiency:
 
 - Speedup relative to the one-worker case: $S_p(N) = T_1(N) / T_p(N)$
-- Strong scaling efficiency with respect to model-evaluation workers: $E_p(N) = S_p(N) / p$
+- Strong-scaling efficiency with respect to model-evaluation workers: $E_p(N) = S_p(N) / p$
 
-Here, $N$ is the fixed calibration workload, $p$ is the number of model-evaluation workers, $T_1(N)$ is the runtime using one model-evaluation worker, and $T_p(N)$ is the runtime using $p$ model-evaluation workers. The coordinator rank is required for the parallel DDS algorithm, but it is not counted as a model-evaluation worker in the efficiency calculation.
+Following the notation from Section 1.3 of this module, $N$ represents the fixed calibration workload, $p$ is the number of model-evaluation workers, $T_1(N)$ is the runtime using one model-evaluation worker, and $T_p(N)$ is the runtime using $p$ model-evaluation workers. The coordinator rank is required for the parallel DDS algorithm, but it is not counted as a model-evaluation worker in the efficiency calculation.
 
-**Deliverable:** the *Performance Evaluation* section of your memo must report the summary file, the strong scaling table, speedup values, and parallel efficiency values. It must also address the following questions:
+**Deliverable:** the *Performance Evaluation* section of your memo must report the Slurm job IDs, the strong scaling table, speedup values, and parallel efficiency values. It must also address the following questions:
 
 - Did adding model-evaluation workers improve runtime?
 - Was the speedup close to ideal?
-- Are these strong scaling or weak scaling experiments?
-- How does the coordinator rank affect the efficiency calculation?
+- If the speedup was not ideal, what factors might have limited the parallel efficiency of this calibration workflow?
 
 ## 4. Recommendation and Reflection
 
 **Deliverable:** the *Recommendation and Reflection* section of your memo must address the following questions:
 
-- What is the practical value of parallelizing this calibration workflow? How might the research group use this capability in their work?
-- Are all requested Slurm resources used throughout the duration of the scaling study, or are some left idle?
-- What changes could be made to improve resource utilization in this workflow?
+- What is the practical value of parallelizing this calibration workflow, and how might the hydrologic modeling research group benefit from using this capability in their work?
+- Why should the different worker-counts be submitted as separate Slurm jobs rather than as a single job that runs multiple worker counts in sequence?
+- Why, in this scaling study, is the best KGE not expected to be identical across worker counts? Why does adding workers not guarantee that the best KGE will improve?
 
 ## 5. Reproducibility Appendix
 
@@ -296,6 +294,7 @@ At the end of your memo, include an appendix that contains the information neede
 **Deliverable:** the *Reproducibility Appendix* section of your memo must include:
 
 - The final `ostIn.txt` and `scripts/run_ostrich.sh`.
-- The contents of `strong_scaling_summary_123456.csv`, where `123456` is the Slurm job ID of your scaling study.
-- The per-worker best KGE values reported in `strong_scaling_summary_123456.csv`.
-- The best KGE value from the final parallel run, mirrored in `output_archive/KGE.txt`.
+- The Slurm resource information from `sinfo -N -o "%N %P %c %t"` used to choose worker counts.
+- The Slurm accounting output from `sacct -j 123456 --format=JobID,NTasks,Elapsed` for each job.
+- The `slurm-parallel-calibration-123456.out` log files for each job.
+- The KGE values from each `scaling_archive_<jobid>/output_archive/KGE.txt` file, matched to `NTasks` using the Slurm accounting output.

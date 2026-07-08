@@ -273,8 +273,8 @@ with nc4.Dataset(attribute_path/attribute_name, "w", format="NETCDF4") as att:
         att['hru2gruId'][idx] = shp.iloc[idx][catchment_gruId_var]
         
         # Constants
-        att['tan_slope'][idx]      = 0.1                         # Only used in qbaseTopmodel modelling decision
-        att['contourLength'][idx]  = 30                          # Only used in qbaseTopmodel modelling decision
+        att['tan_slope'][idx]      = 0.1                         # Only used in qbaseTopmodel modeling decision
+        att['contourLength'][idx]  = 30                          # Only used in qbaseTopmodel modeling decision
         att['slopeTypeIndex'][idx] = 1                           # Needs to be set but not used
         att['mHeight'][idx]        = forcing_measurement_height  # Forcing data height; used in some scaling equations       
         att['downHRUindex'][idx]   = 0   # All HRUs modeled as independent columns; optionally changed when elevation is added to attributes.nc

@@ -35,23 +35,18 @@
 </style>
 </head>
 <body>
-<p>This activity focuses on a lumped hydrologic model calibration workflow for the Bow River basin upstream of the Banff streamflow gauge in Alberta, Canada. Starting from a serial calibration workflow, you will convert it to a parallel workflow that uses Slurm and MPI, then run a simple scaling test to evaluate the performance of the parallel workflow.</p>
+<p>This scenario focuses on a lumped hydrologic model calibration workflow for the Bow River basin upstream of the Banff streamflow gauge in Alberta, Canada. Starting from a serial calibration workflow, you will convert it to a parallel workflow that uses Slurm and MPI, then run a simple scaling test to evaluate the performance of the parallel workflow.</p>
 <h3>1. Serial Workflow</h3>
-<p>This activity uses OSTRICH to calibrate a lumped SUMMA model for the Bow River basin upstream of the Banff streamflow gauge. The starting point is a serial calibration workflow that uses the Dynamically Dimensioned Search (DDS) algorithm.</p>
+<p>In this scenario, the OSTRICH optimization toolkit is used to calibrate a lumped SUMMA model for the Bow River basin upstream of the Banff streamflow gauge. The starting point is a serial calibration workflow that uses the Dynamically Dimensioned Search (DDS) algorithm.</p>
 <p>Compared with the distributed workflow in Scenario 1, this setup is simplified so that the calibration runs quickly enough for an instructional scaling test. The SUMMA model is configured in lumped form, where all spatial units are aggregated into a single basin representation. A separate routing model, which would normally combine the results from the spatial units to produce a single streamflow hydrograph, is not required in the lumped model.</p>
 <p>Figure 7 summarizes the serial calibration pattern: OSTRICH proposes one candidate parameter set, the lumped model simulates streamflow, and the objective function is evaluated by comparing the simulated streamflow to observed streamflow.</p>
-<figure style="text-align: center; margin-bottom: 1.5em;"><img src="/asset-v1:CIROH_HydroLearn+HPC201+2026+type@asset+block@calibration_lumped.png" alt="Calibration workflow diagram showing one candidate parameter set evaluated by a lumped model before the optimizer proposes new trial parameters." style="width: 85%; height: auto;" />
+<figure style="text-align: center; margin-bottom: 1.5em;"><img src="/asset-v1:CIROH_HydroLearn+HPC201+2026+type@asset+block@calibration_lumped.png" alt="Calibration workflow diagram showing one candidate parameter set evaluated by a lumped model before the optimizer proposes new trial parameters." style="width: 70%; height: auto;" />
 <figcaption><strong>Figure 7.</strong> Serial lumped calibration workflow.</figcaption>
 </figure>
-<p>Conceptually, the calibration problem is to find the normalized calibration vector <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi mathvariant="bold-italic">𝜽</mi><mo>*</mo></msup><annotation encoding="application/x-tex">\boldsymbol{\theta}^*</annotation></semantics></math> that maximizes agreement between simulated and observed streamflow:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi mathvariant="bold-italic">𝜽</mi><mo>*</mo></msup><mo>=</mo><munder><mi mathvariant="normal">arg max</mi><mrow><mi mathvariant="bold-italic">𝜽</mi><mo>∈</mo><mo stretchy="false" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><msup><mo stretchy="false" form="postfix">]</mo><mi>d</mi></msup></mrow></munder><mrow><mi mathvariant="normal">KGE</mi><mo>&#8289;</mo></mrow><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi mathvariant="bold-italic">𝒒</mi><mi>s</mi></msub><mo stretchy="false" form="prefix">(</mo><mi mathvariant="bold-italic">𝜽</mi><mo stretchy="false" form="postfix">)</mo><mo>,</mo><msub><mi mathvariant="bold-italic">𝒒</mi><mi>o</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">
-\boldsymbol{\theta}^* = \operatorname*{arg\,max}_{\boldsymbol{\theta} \in [0,1]^d} \operatorname{KGE}\!\left(\mathbf{q}_s(\boldsymbol{\theta}), \mathbf{q}_o\right).
-</annotation></semantics></math></p>
-<p>Here, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi mathvariant="bold-italic">𝜽</mi><annotation encoding="application/x-tex">\boldsymbol{\theta}</annotation></semantics></math> is the calibration vector normalized to <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><msup><mo stretchy="false" form="postfix">]</mo><mi>d</mi></msup></mrow><annotation encoding="application/x-tex">[0,1]^d</annotation></semantics></math>, where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math> is the number of parameters being calibrated, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi mathvariant="bold-italic">𝒒</mi><mi>s</mi></msub><mo stretchy="false" form="prefix">(</mo><mi mathvariant="bold-italic">𝜽</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\mathbf{q}_s(\boldsymbol{\theta})</annotation></semantics></math> is the simulated streamflow produced by SUMMA for that parameter vector, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi mathvariant="bold-italic">𝒒</mi><mi>o</mi></msub><annotation encoding="application/x-tex">\mathbf{q}_o</annotation></semantics></math> is the observed streamflow over the calibration period, and KGE is the Kling-Gupta efficiency.</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">KGE</mi><mo>&#8289;</mo></mrow><mo>=</mo><mn>1</mn><mo>−</mo><msqrt><mrow><mo stretchy="false" form="prefix">(</mo><mi>r</mi><mo>−</mo><mn>1</mn><msup><mo stretchy="false" form="postfix">)</mo><mn>2</mn></msup><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>α</mi><mo>−</mo><mn>1</mn><msup><mo stretchy="false" form="postfix">)</mo><mn>2</mn></msup><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>β</mi><mo>−</mo><mn>1</mn><msup><mo stretchy="false" form="postfix">)</mo><mn>2</mn></msup></mrow></msqrt><mo>,</mo></mrow><annotation encoding="application/x-tex">
-\operatorname{KGE} = 1 - \sqrt{(r - 1)^2 + (\alpha - 1)^2 + (\beta - 1)^2},
-</annotation></semantics></math></p>
-<p>where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mrow><mi mathvariant="normal">corr</mi><mo>&#8289;</mo></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi mathvariant="bold-italic">𝒒</mi><mi>s</mi></msub><mo>,</mo><msub><mi mathvariant="bold-italic">𝒒</mi><mi>o</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">r = \operatorname{corr}(\mathbf{q}_s, \mathbf{q}_o)</annotation></semantics></math> is the correlation, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>α</mi><mo>=</mo><mfrac><msub><mi>σ</mi><mi>s</mi></msub><msub><mi>σ</mi><mi>o</mi></msub></mfrac></mrow><annotation encoding="application/x-tex">\alpha = \frac{\sigma_s}{\sigma_o}</annotation></semantics></math> is the variability ratio, and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi><mo>=</mo><mfrac><msub><mi>μ</mi><mi>s</mi></msub><msub><mi>μ</mi><mi>o</mi></msub></mfrac></mrow><annotation encoding="application/x-tex">\beta = \frac{\mu_s}{\mu_o}</annotation></semantics></math> is the mean bias ratio. Larger KGE values indicate better agreement between simulated and observed streamflow.</p>
+<p>Conceptually, the calibration problem is to find the normalized calibration vector <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><msup><mi mathvariant="bold-italic">𝜽</mi><mo>*</mo></msup></math> that maximizes agreement between simulated and observed streamflow:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msup><mi mathvariant="bold-italic">𝜽</mi><mo>*</mo></msup><mo>=</mo><munder><mi mathvariant="normal">arg max</mi><mrow><mi mathvariant="bold-italic">𝜽</mi><mo>∈</mo><mo stretchy="false" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><msup><mo stretchy="false" form="postfix">]</mo><mi>d</mi></msup></mrow></munder><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">KGE</mi><mo>&#8289;</mo></mrow><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi mathvariant="bold-italic">𝒒</mi><mi>s</mi></msub><mo stretchy="false" form="prefix">(</mo><mi mathvariant="bold-italic">𝜽</mi><mo stretchy="false" form="postfix">)</mo><mo>,</mo><msub><mi mathvariant="bold-italic">𝒒</mi><mi>o</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow></math></p>
+<p>Here, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mi mathvariant="bold-italic">𝜽</mi></math> is the calibration vector normalized to <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mo stretchy="false" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><msup><mo stretchy="false" form="postfix">]</mo><mi>d</mi></msup></mrow></math>, where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mi>d</mi></math> is the number of parameters being calibrated, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi mathvariant="bold-italic">𝒒</mi><mi>s</mi></msub><mo stretchy="false" form="prefix">(</mo><mi mathvariant="bold-italic">𝜽</mi><mo stretchy="false" form="postfix">)</mo></mrow></math> is the simulated streamflow produced by SUMMA for that parameter vector, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi mathvariant="bold-italic">𝒒</mi><mi>o</mi></msub></math> is the observed streamflow over the calibration period, and KGE is the Kling-Gupta efficiency, which is defined in terms of the correlation <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>r</mi><mo>=</mo><mrow><mi mathvariant="normal">corr</mi><mo>&#8289;</mo></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi mathvariant="bold-italic">𝒒</mi><mi>s</mi></msub><mo>,</mo><msub><mi mathvariant="bold-italic">𝒒</mi><mi>o</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow></math>, variability ratio <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>α</mi><mo>=</mo><msub><mi>σ</mi><mi>s</mi></msub><mi>/</mi><msub><mi>σ</mi><mi>o</mi></msub></mrow></math>, and mean bias ratio <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>β</mi><mo>=</mo><msub><mi>μ</mi><mi>s</mi></msub><mi>/</mi><msub><mi>μ</mi><mi>o</mi></msub></mrow></math> as</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mrow><mi mathvariant="normal">KGE</mi><mo>&#8289;</mo></mrow><mo>=</mo><mn>1</mn><mo>−</mo><msqrt><mrow><mo stretchy="false" form="prefix">(</mo><mi>r</mi><mo>−</mo><mn>1</mn><msup><mo stretchy="false" form="postfix">)</mo><mn>2</mn></msup><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>α</mi><mo>−</mo><mn>1</mn><msup><mo stretchy="false" form="postfix">)</mo><mn>2</mn></msup><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>β</mi><mo>−</mo><mn>1</mn><msup><mo stretchy="false" form="postfix">)</mo><mn>2</mn></msup></mrow></msqrt><mi>.</mi></mrow></math> Larger KGE values indicate better agreement between simulated and observed streamflow.</p>
 <p>If you are using the <a href="https://github.com/tristanmontoya/vhpc-hydrotools"><code>vhpc-hydrotools</code> virtual cluster</a>, change into the repository checkout:</p>
 <pre class="code-box"><code>cd /workspace/hydrolearn-hpc</code></pre>
 <p>If you are using another Slurm cluster, clone the repository yourself in a location of your choice:</p>
@@ -87,7 +82,7 @@ ostrich</code></pre>
 <p>Slurm will print a line such as <code>Submitted batch job 123456</code>. Replace <code>123456</code> with your job ID when checking the queue:</p>
 <pre class="code-box"><code>squeue -j 123456</code></pre>
 <p>After the job finishes, use the same job ID to inspect the Slurm log and archived best model:</p>
-<pre class="code-box"><code>less slurm-serial-calibration-123456.out
+<pre class="code-box"><code>cat slurm-serial-calibration-123456.out
 cat output_archive/KGE.txt
 ls output_archive</code></pre>
 <p><strong>Deliverable:</strong> the <em>Serial Workflow</em> section of your memo must provide a high-level overview of the workflow and address the following questions:</p>
@@ -98,8 +93,8 @@ ls output_archive</code></pre>
 </ul>
 <h3>2. Parallelization</h3>
 <p>OSTRICH includes a parallel version of the DDS algorithm, which evaluates multiple candidate parameter sets at the same time. The parallel DDS algorithm uses MPI to distribute the model evaluations across multiple worker ranks. Each worker rank runs a separate instance of the SUMMA model with a different candidate parameter set, and the results are sent back to the coordinator rank, which manages the optimization process. We will now modify the serial workflow to use the parallel DDS algorithm.</p>
-<p>Figure 8 summarizes a generic parallel calibration pattern: a batch of candidate parameter sets is dispatched to workers, independent model evaluations run concurrently, and the optimizer collects objective function values before proposing another batch. In this assignment, the worker evaluation is implemented by <code>scripts/run_trial.sh</code>, which runs the lumped SUMMA model and writes the KGE value used by OSTRICH.</p>
-<figure style="text-align: center; margin-bottom: 1.5em;"><img src="/asset-v1:CIROH_HydroLearn+HPC201+2026+type@asset+block@calibration_batch_lumped.png" alt="Parallel calibration workflow diagram showing a batch of parameter candidates dispatched to workers, evaluated independently, and collected by the optimizer." style="width: 85%; height: auto;" />
+<p>Figure 8 summarizes a generic parallel calibration pattern: a batch of candidate parameter sets is dispatched to workers, independent model evaluations run concurrently, and the optimizer collects objective function values before proposing another batch. In the repository, the worker evaluation is implemented by <code>scripts/run_trial.sh</code>, which runs the lumped SUMMA model and writes the KGE value used by OSTRICH.</p>
+<figure style="text-align: center; margin-bottom: 1.5em;"><img src="/asset-v1:CIROH_HydroLearn+HPC201+2026+type@asset+block@calibration_batch_lumped.png" alt="Parallel calibration workflow diagram showing a batch of parameter candidates dispatched to workers, evaluated independently, and collected by the optimizer." style="width: 70%; height: auto;" />
 <figcaption><strong>Figure 8.</strong> Parallel lumped calibration workflow.</figcaption>
 </figure>
 <p>Open <code>ostIn.txt</code>. The serial file needs three main changes:</p>
@@ -108,140 +103,124 @@ ls output_archive</code></pre>
 <li>Tell OSTRICH how to create worker directories</li>
 <li>Replace the serial <code>DDS</code> algorithm block that specifies the parameters with a <code>ParallelDDS</code> block using the same parameters.</li>
 </ol>
-<p>First, change the program type from the serial <code>DDS</code> to <code>ParallelDDS</code>.</p>
-<pre class="code-box"><code>-ProgramType  DDS
-+ProgramType  ParallelDDS</code></pre>
-<p>This changes the OSTRICH optimizer while keeping the model execution workflow intact.</p>
-<p>Next, add a worker-directory prefix after <code>ModelExecutable</code>:</p>
-<pre class="code-box"><code> ModelExecutable ./scripts/run_trial.sh
-+ModelSubdir ostrich_worker_</code></pre>
-<p>This tells OSTRICH to create separate working directories such as <code>ostrich_worker_0</code>, <code>ostrich_worker_1</code>, and so on, for each MPI rank to write to as they run model simulations in parallel. Immediately after <code>ModelSubdir</code>, add a block that specifies the extra directories that each worker needs:</p>
-<pre class="code-box"><code>+BeginExtraDirs
-+model
-+obs
-+ostrich
-+scripts
-+EndExtraDirs</code></pre>
-<p>Finally, replace the serial DDS algorithm block with a ParallelDDS block.</p>
-<pre class="code-box"><code>-BeginDDSAlg
-+BeginParallelDDSAlg
- PerturbationValue 0.20
- MaxIterations 40
- UseInitialParamValues
--EndDDSAlg
-+EndParallelDDSAlg</code></pre>
+<p>First, change the program type from the serial <code>DDS</code> to <code>ParallelDDS</code> by replacing</p>
+<pre class="code-box"><code>ProgramType  DDS</code></pre>
+<p>with the following line:</p>
+<pre class="code-box"><code>ProgramType  ParallelDDS</code></pre>
+<p>This changes the OSTRICH optimizer while keeping the model execution workflow intact. Next, after the <code>ModelExecutable ./scripts/run_trial.sh</code> line, add a <code>ModelSubdir</code> line that specifies the prefix for the worker directories:</p>
+<pre class="code-box"><code>ModelSubdir ostrich_worker_</code></pre>
+<p>This tells OSTRICH to create separate working directories such as <code>ostrich_worker_0</code>, <code>ostrich_worker_1</code>, and so on, for each MPI rank to write to as they run model simulations in parallel. Immediately after the <code>ModelSubdir</code> line, add a block that specifies the extra directories that each worker needs:</p>
+<pre class="code-box"><code>BeginExtraDirs
+model
+obs
+ostrich
+scripts
+EndExtraDirs</code></pre>
+<p>Finally, replace the serial DDS algorithm block</p>
+<pre class="code-box"><code>BeginDDSAlg
+PerturbationValue 0.20
+MaxIterations 40
+UseInitialParamValues
+EndDDSAlg</code></pre>
+<p>with the parallel block:</p>
+<pre class="code-box"><code>BeginParallelDDSAlg
+PerturbationValue 0.20
+MaxIterations 40
+UseInitialParamValues
+EndParallelDDSAlg</code></pre>
 <p>Next, open <code>scripts/run_ostrich.sh</code> again and modify the serial Slurm script so that it launches <code>OstrichMPI</code> with <code>srun</code>.</p>
-<p>The parallel DDS algorithm uses one coordinator MPI rank in addition to the model-evaluation worker ranks. Therefore, a run with <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math> workers needs <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>+</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">p + 1</annotation></semantics></math> total MPI tasks. The total number of tasks launched by <code>srun</code> is set to <code>task_count=$((worker_count + 1))</code>, which accounts for the coordinator rank.</p>
-<p>The launch script below is configured for the <code>vhpc-hydrotools</code> virtual cluster. It requests 5 total tasks (<code>--ntasks=5</code>) so that the largest scaling case in the loop, which uses four model-evaluation workers plus one coordinator, can run. If you are using another Slurm cluster, adapt <code>--nodes</code>, <code>--ntasks</code>, <code>--ntasks-per-node</code>, and <code>--time</code> to fit your allocation and the largest worker count you plan to test.</p>
+<p>Before choosing the largest worker count, inspect the CPU resources that Slurm can allocate:</p>
+<pre class="code-box"><code>sinfo -N -o "%N %P %c %t"</code></pre>
+<p>The <code>-N</code> option prints one line per node. The <code>-o</code> option selects the output columns: <code>%N</code> is the node name, <code>%P</code> is the partition name, <code>%c</code> is the number of CPUs on the node, and <code>%t</code> is the node state. Use this information to choose the largest feasible number of MPI tasks for your allocation.</p>
+<p>The parallel DDS algorithm uses one coordinator MPI rank in addition to the model-evaluation worker ranks. Therefore, a run with <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mi>p</mi></math> workers needs <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>p</mi><mo>+</mo><mn>1</mn></mrow></math> total MPI tasks. The script below uses all tasks allocated by Slurm for the job. In your results table, compute the number of model-evaluation workers as <code>NTasks - 1</code> from the Slurm accounting output.</p>
+<p>The launch script below is configured for the <code>vhpc-hydrotools</code> virtual cluster. It requests 8 total tasks (<code>--ntasks=8</code>) by default, which corresponds to seven model-evaluation workers plus one coordinator. In the scaling study below, you will override <code>--ntasks</code> when submitting each job. If you are using another Slurm cluster, adapt <code>--ntasks</code> and <code>--time</code> to fit your allocation and the largest worker count you plan to test.</p>
 <pre class="code-box"><code>#!/usr/bin/env bash
 #SBATCH --job-name=parallel-calibration
-#SBATCH --nodes=2
-#SBATCH --ntasks=5
-#SBATCH --ntasks-per-node=4
+#SBATCH --ntasks=8
 #SBATCH --time=08:00:00
 #SBATCH --output=slurm-%x-%j.out
 set -euo pipefail
 
-# Preserve best models in the original case directory
+# Use the submission directory as the source case
+case_dir="${SLURM_SUBMIT_DIR:-${PWD}}"
+
+# Run each job in a separate copied case directory
+run_dir="${case_dir}/scaling_archive_${SLURM_JOB_ID}"
+mkdir -p "${run_dir}"
+cp -R "${case_dir}/ostIn.txt" "${case_dir}/model" "${case_dir}/obs" \
+    "${case_dir}/ostrich" "${case_dir}/scripts" "${run_dir}/"
+cd "${run_dir}"
+
+# Archive best models inside this job directory
 export PARALLEL_CALIBRATION_ROOT="${PWD}"
+export OUTPUT_ARCHIVE_DIR="${PWD}/output_archive"
 
-# Create a summary file for the scaling study
-summary_file="strong_scaling_summary_${SLURM_JOB_ID}.csv"
-archive_root="scaling_archive_${SLURM_JOB_ID}"
-printf "nworkers,ntasks,seconds,best_kge,archive_dir\n" > "${summary_file}"
-mkdir -p "${archive_root}"
-cp ostIn.txt scripts/run_ostrich.sh "${archive_root}/"
-
-# The coordinator rank is required in addition to the worker ranks
-for worker_count in 1 2 4; do
-    # Calculate the total number of tasks needed for this worker count
-    task_count=$((worker_count + 1))
-
-    # Set the output archive directory for this worker-count run
-    run_archive="${archive_root}/workers_${worker_count}"
-    export OUTPUT_ARCHIVE_DIR="${PWD}/${run_archive}/output_archive"
-
-    # Clean previous run artifacts
-    rm -rf ostrich_worker_* Ost*.txt model_run.log "${run_archive}"
-
-    # Make a fresh output archive directory
-    mkdir -p "${OUTPUT_ARCHIVE_DIR}"
-
-    # Start the timer for this worker-count run
-    start_time="${SECONDS}"
-
-    # Run the parallel calibration with the current worker count
-    srun --ntasks="${task_count}" OstrichMPI
-
-    # Calculate the elapsed time for this worker-count run
-    elapsed_seconds=$((SECONDS - start_time))
-
-    # Read the best KGE from the current run into the variable `best_kge`
-    best_kge="NA"
-    if [ -f "${OUTPUT_ARCHIVE_DIR}/KGE.txt" ]; then
-        read -r best_kge _ &lt; "${OUTPUT_ARCHIVE_DIR}/KGE.txt"
-    fi
-
-    # Keep output_archive aligned with the latest completed run
-    rm -rf output_archive
-    cp -r "${OUTPUT_ARCHIVE_DIR}" output_archive
-
-    printf "%s,%s,%s,%s,%s\n" "${worker_count}" "${task_count}" "${elapsed_seconds}" \
-        "${best_kge}" "${run_archive}" >> "${summary_file}"
-done</code></pre>
+# Run the parallel calibration with all allocated tasks
+srun --ntasks="${SLURM_NTASKS}" OstrichMPI</code></pre>
 <p><strong>Deliverable:</strong> the <em>Parallelization</em> section of your memo must address the following questions:</p>
 <ul>
 <li>Why do the worker directories need multiple copies of <code>model</code>, <code>obs</code>, <code>ostrich</code>, and <code>scripts</code>?</li>
 <li>If <code>MaxIterations</code> is kept fixed at 40 and we increase the number of MPI ranks, and the random seed is fixed, will the same parameter sets be evaluated in each run?</li>
 </ul>
 <h3>3. Performance Evaluation</h3>
-<p>Submit the job from the case directory:</p>
-<pre class="code-box"><code>cd /path/to/hydrolearn-hpc/bow_at_banff_lumped_calibration
-sbatch scripts/run_ostrich.sh</code></pre>
-<p>Slurm will print a line such as <code>Submitted batch job 123456</code>. Replace <code>123456</code> with your job ID when checking the queue:</p>
+<p>Submit one job for each worker count from the case directory. Set <code>--ntasks</code> to <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>p</mi><mo>+</mo><mn>1</mn></mrow></math> where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mi>p</mi></math> is the number of model-evaluation workers. The command-line <code>--ntasks</code> value overrides the default in <code>scripts/run_ostrich.sh</code>, so the script automatically uses the requested task count without an additional argument. Because each job creates a separate copied case directory under <code>scaling_archive_${SLURM_JOB_ID}/</code>, these jobs can be submitted at the same time.</p>
+<pre class="code-box"><code>sbatch --ntasks=2 scripts/run_ostrich.sh
+sbatch --ntasks=3 scripts/run_ostrich.sh
+sbatch --ntasks=4 scripts/run_ostrich.sh
+sbatch --ntasks=5 scripts/run_ostrich.sh
+sbatch --ntasks=6 scripts/run_ostrich.sh
+sbatch --ntasks=7 scripts/run_ostrich.sh
+sbatch --ntasks=8 scripts/run_ostrich.sh</code></pre>
+<p>On a larger Slurm system, continue the same pattern with higher <code>--ntasks</code> values if your allocation supports them. You could also submit the jobs in a loop, for example:</p>
+<pre class="code-box"><code>for ntasks in {2..8}; do
+    sbatch --ntasks="${ntasks}" scripts/run_ostrich.sh
+done</code></pre>
+<p>For each of these <code>sbatch</code> commands, Slurm will print a line such as <code>Submitted batch job 123456</code>, with a different job ID for each submitted job. Replace <code>123456</code> with the corresponding job ID when checking the queue:</p>
 <pre class="code-box"><code>squeue -j 123456</code></pre>
-<p>After the job finishes, use the same job ID to inspect the Slurm log and archived best model:</p>
-<pre class="code-box"><code>less slurm-parallel-calibration-123456.out
-cat output_archive/KGE.txt
-ls output_archive</code></pre>
-<p>Inspect the summary file, which lists the timings, per-worker archives, and best KGE values:</p>
-<pre class="code-box"><code>cat strong_scaling_summary_123456.csv</code></pre>
-<p>Based on the summary file, create a table with these columns:</p>
+<p>After each job finishes, use the same job ID to inspect the Slurm log and archived best model:</p>
+<pre class="code-box"><code>cat slurm-parallel-calibration-123456.out
+cat scaling_archive_123456/output_archive/KGE.txt
+ls scaling_archive_123456/output_archive</code></pre>
+<p>Then record the total task count and runtime for each completed job, using Slurm accounting output:</p>
+<pre class="code-box"><code>sacct -j 123456 --format=JobID,NTasks,Elapsed</code></pre>
+<p>Use the top-level job rows in the <code>sacct</code> output, not the <code>.batch</code> or <code>.extern</code> rows. Use <code>NTasks - 1</code> as the number of model-evaluation workers. Based on the Slurm accounting output and the per-job archives, create a table with these columns:</p>
 <ul>
+<li>Slurm job ID</li>
 <li>Total MPI tasks</li>
 <li>Number of model-evaluation workers</li>
-<li>Runtime in seconds</li>
+<li>Best KGE value from the <code>output_archive/KGE.txt</code> file</li>
+<li>Wall-clock runtime from the Slurm accounting output</li>
 <li>Speedup relative to the one-worker case</li>
-<li>Strong scaling efficiency with respect to the number of workers</li>
+<li>Strong-scaling efficiency</li>
 </ul>
-<p>Compute the following quantities using the notation from the module slides:</p>
+<p>Use the following formulas to compute the speedup and strong-scaling efficiency:</p>
 <ul>
-<li>Speedup relative to the one-worker case: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>S</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>T</mi><mn>1</mn></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><msub><mi>T</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">S_p(N) = T_1(N) / T_p(N)</annotation></semantics></math></li>
-<li>Strong scaling efficiency with respect to model-evaluation workers: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>E</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>S</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mi>p</mi></mrow><annotation encoding="application/x-tex">E_p(N) = S_p(N) / p</annotation></semantics></math></li>
+<li>Speedup relative to the one-worker case: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>S</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>T</mi><mn>1</mn></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><msub><mi>T</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo></mrow></math></li>
+<li>Strong-scaling efficiency with respect to model-evaluation workers: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>E</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>S</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mi>p</mi></mrow></math></li>
 </ul>
-<p>Here, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>N</mi><annotation encoding="application/x-tex">N</annotation></semantics></math> is the fixed calibration workload, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math> is the number of model-evaluation workers, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mn>1</mn></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">T_1(N)</annotation></semantics></math> is the runtime using one model-evaluation worker, and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">T_p(N)</annotation></semantics></math> is the runtime using <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math> model-evaluation workers. The coordinator rank is required for the parallel DDS algorithm, but it is not counted as a model-evaluation worker in the efficiency calculation.</p>
-<p><strong>Deliverable:</strong> the <em>Performance Evaluation</em> section of your memo must report the summary file, the strong scaling table, speedup values, and parallel efficiency values. It must also address the following questions:</p>
+<p>Following the notation from Section 1.3 of this module, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mi>N</mi></math> represents the fixed calibration workload, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mi>p</mi></math> is the number of model-evaluation workers, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>T</mi><mn>1</mn></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo></mrow></math> is the runtime using one model-evaluation worker, and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>T</mi><mi>p</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>N</mi><mo stretchy="false" form="postfix">)</mo></mrow></math> is the runtime using <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mi>p</mi></math> model-evaluation workers. The coordinator rank is required for the parallel DDS algorithm, but it is not counted as a model-evaluation worker in the efficiency calculation.</p>
+<p><strong>Deliverable:</strong> the <em>Performance Evaluation</em> section of your memo must report the Slurm job IDs, the strong scaling table, speedup values, and parallel efficiency values. It must also address the following questions:</p>
 <ul>
 <li>Did adding model-evaluation workers improve runtime?</li>
 <li>Was the speedup close to ideal?</li>
-<li>Are these strong scaling or weak scaling experiments?</li>
-<li>How does the coordinator rank affect the efficiency calculation?</li>
+<li>If the speedup was not ideal, what factors might have limited the parallel efficiency of this calibration workflow?</li>
 </ul>
 <h3>4. Recommendation and Reflection</h3>
 <p><strong>Deliverable:</strong> the <em>Recommendation and Reflection</em> section of your memo must address the following questions:</p>
 <ul>
-<li>What is the practical value of parallelizing this calibration workflow? How might the research group use this capability in their work?</li>
-<li>Are all requested Slurm resources used throughout the duration of the scaling study, or are some left idle?</li>
-<li>What changes could be made to improve resource utilization in this workflow?</li>
+<li>What is the practical value of parallelizing this calibration workflow, and how might the hydrologic modeling research group benefit from using this capability in their work?</li>
+<li>Why should the different worker-counts be submitted as separate Slurm jobs rather than as a single job that runs multiple worker counts in sequence?</li>
+<li>Why, in this scaling study, is the best KGE not expected to be identical across worker counts? Why does adding workers not guarantee that the best KGE will improve?</li>
 </ul>
 <h3>5. Reproducibility Appendix</h3>
 <p>At the end of your memo, include an appendix that contains the information needed to reproduce your results.</p>
 <p><strong>Deliverable:</strong> the <em>Reproducibility Appendix</em> section of your memo must include:</p>
 <ul>
 <li>The final <code>ostIn.txt</code> and <code>scripts/run_ostrich.sh</code>.</li>
-<li>The contents of <code>strong_scaling_summary_123456.csv</code>, where <code>123456</code> is the Slurm job ID of your scaling study.</li>
-<li>The per-worker best KGE values reported in <code>strong_scaling_summary_123456.csv</code>.</li>
-<li>The best KGE value from the final parallel run, mirrored in <code>output_archive/KGE.txt</code>.</li>
+<li>The Slurm resource information from <code>sinfo -N -o "%N %P %c %t"</code> used to choose worker counts.</li>
+<li>The Slurm accounting output from <code>sacct -j 123456 --format=JobID,NTasks,Elapsed</code> for each job.</li>
+<li>The <code>slurm-parallel-calibration-123456.out</code> log files for each job.</li>
+<li>The KGE values from each <code>scaling_archive_&lt;jobid>/output_archive/KGE.txt</code> file, matched to <code>NTasks</code> using the Slurm accounting output.</li>
 </ul>
 </body>
 </html>
