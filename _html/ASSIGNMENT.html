@@ -1,0 +1,47 @@
+<style>
+  .code-box {
+    background: #f5f5f5;
+    max-width: 80ch;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+  }
+
+  .directive-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+  }
+
+  .directive-table th,
+  .directive-table td {
+    border: 1px solid #ddd;
+    padding: 0.5em 0.75em;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .directive-table th {
+    background: #f5f5f5;
+  }
+
+  .directive-table code {
+    white-space: nowrap;
+  }
+</style>
+<p>In this activity, you will apply the HPC concepts introduced in this module to representative hydrologic modeling workflows. The goal is not to focus on hydrologic model development or theory, but to understand how computational workloads can be structured and mapped onto HPC resources in a practical setting. To this end, you will take the role of a <strong>research computing specialist advising a hydrologic modeling group</strong>. The group has working serial workflows, but they need guidance on how to map those workflows onto HPC resources, evaluate performance, and decide when parallel execution is worthwhile.</p>
+<p>The workflows use <a href="https://github.com/CH-Earth/summa">SUMMA</a> (Structure for Unifying Multiple Modeling Alternatives) for hydrologic simulation, <a href="https://github.com/ESCOMP/mizuRoute">mizuRoute</a> for routing runoff from spatial units to the basin outlet, and <a href="https://github.com/DOI-BOR/ostrich">OSTRICH</a> (Optimization Software Toolkit for Research Involving Computational Heuristics) for model calibration.</p>
+<p>The activity files, scripts, data, and a list of required software tools are available in the <a href="https://github.com/tristanmontoya/hydrolearn-hpc">HydroLearn HPC GitHub repository</a>. You can run the examples on the <a href="https://github.com/tristanmontoya/vhpc-hydrotools">virtual HPC cluster</a>, where the required tools are pre-installed, or on an actual Slurm cluster with the required software installed.</p>
+<p>Two example scenarios are provided to illustrate different types of computational demand in hydrologic modeling workflows. You may complete one or both of them depending on your interests or research needs, but both assess the same underlying HPC concepts. The scenarios consist of the following simulation workflows, both of which involve predicting the streamflow at the Bow River at Banff, Alberta, Canada using SUMMA:</p>
+<ul>
+<li><strong>Scenario 1:</strong> A distributed hydrologic model workflow, where computational cost arises from a single SUMMA-mizuRoute simulation that can be parallelized across spatial units.</li>
+<li><strong>Scenario 2:</strong> A lumped model calibration workflow, where computational cost arises from running a large number of independent SUMMA simulations within OSTRICH.</li>
+</ul>
+<p>For each scenario that you complete, submit one practical, concise technical memo describing your findings and recommendations as either a Markdown file or a PDF document, written as if you were advising a hydrologic modeling group on best practices for accelerating their simulation workflows using parallel computing on HPC systems. Each memo should be self-contained and include the following sections:</p>
+<ol>
+<li>Serial Workflow</li>
+<li>Parallelization</li>
+<li>Performance Evaluation</li>
+<li>Recommendation and Reflection</li>
+<li>Reproducibility Appendix</li>
+</ol>
+<p>The assignment instructions will guide you through the steps needed to complete each section. Completing the activity and writing the memo will take between 60 and 120 minutes for each scenario.</p>

@@ -1,4 +1,4 @@
-# SUMMA Base Settings
+# SUMMA base settings
 Recall that a SUMMA Grouped Response Unit (GRU) contains at least one but possibly more Hydrologic Response Units (HRUs).
 
 #### basinParamInfo.txt

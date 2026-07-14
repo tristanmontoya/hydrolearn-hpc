@@ -102,7 +102,7 @@ def calculate_modified_kge(obs: np.ndarray, sim: np.ndarray) -> float:
     )
 
 
-# Read observed streamflow and convert it to cubic metres per second
+# Read observed streamflow and convert it to cubic meters per second
 def read_observations(obs_file: Path, obs_unit: str) -> pd.DataFrame:
     obs = pd.read_csv(
         obs_file,
