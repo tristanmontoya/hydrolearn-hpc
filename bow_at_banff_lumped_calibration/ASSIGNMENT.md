@@ -190,7 +190,7 @@ The launch script below is configured for the `vhpc-hydrotools` virtual cluster.
 #!/usr/bin/env bash
 #SBATCH --job-name=bow-lumped-calib
 #SBATCH --ntasks=8
-#SBATCH --time=08:00:00
+#SBATCH --time=01:00:00
 #SBATCH --output=slurm-%x-%j.out
 set -euo pipefail
 
