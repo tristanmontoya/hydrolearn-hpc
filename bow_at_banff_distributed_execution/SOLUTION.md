@@ -2,13 +2,7 @@
 
 ## 1. Serial Workflow
 
-SUMMA performs land-surface simulations independently for each GRU, while mizuRoute routes runoff through the river network.
-
-The serial workflow iterates through all 52 GRUs and executes SUMMA once for each GRU (`countGRU=1`).
-
-SUMMA is naturally parallelizable because GRUs are independent. Output concatenation, routing, and diagnostics remain serial.
-
-Simply requesting more CPU cores from Slurm does not improve performance because the serial workflow runs/launches only one SUMMA process at a time.
+SUMMA performs land-surface simulations independently for each GRU, whereas mizuRoute routes runoff through the river network. The diagnostics compare routed streamflow with observations using the modified Kling-Gupta efficiency (KGE'). The serial workflow iterates through all 52 GRUs and executes SUMMA once for each GRU (`countGRU=1`). SUMMA is naturally parallelizable because GRUs are independent. Output concatenation, routing, and diagnostics remain serial. Simply requesting more CPU cores from Slurm does not improve performance because the serial workflow runs/launches only one SUMMA process at a time.
 
 ---
 

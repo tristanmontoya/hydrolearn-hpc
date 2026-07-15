@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=parallel-calibration
+#SBATCH --job-name=bow-lumped-calib
 #SBATCH --ntasks=8
 #SBATCH --time=08:00:00
 #SBATCH --output=slurm-%x-%j.out

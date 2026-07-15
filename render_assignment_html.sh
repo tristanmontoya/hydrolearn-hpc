@@ -82,6 +82,11 @@ render_assignment \
     "bow_at_banff_lumped_calibration/ASSIGNMENT.md" \
     "_html/bow_at_banff_lumped_calibration/ASSIGNMENT.html"
 
+render_assignment \
+    "Sample Solution: Parallel Calibration of a Lumped Hydrologic Model" \
+    "bow_at_banff_lumped_calibration/SOLUTION.md" \
+    "_html/bow_at_banff_lumped_calibration/SOLUTION.html"
+
 # Keep generated HTML minimal and strip local links between assignment parts
 perl -pi -e '
     s{<a href="..\/ASSIGNMENT\.md">([^<]*)</a>}{$1}g;
@@ -97,7 +102,8 @@ perl -pi -e '
 ' \
     "_html/ASSIGNMENT.html" \
     "_html/bow_at_banff_distributed_execution/ASSIGNMENT.html" \
-    "_html/bow_at_banff_lumped_calibration/ASSIGNMENT.html"
+    "_html/bow_at_banff_lumped_calibration/ASSIGNMENT.html" \
+    "_html/bow_at_banff_lumped_calibration/SOLUTION.html"
 
 # Keep generated math as plain escaped LaTeX delimiters
 perl -0pi -e '
@@ -106,7 +112,8 @@ perl -0pi -e '
 ' \
     "_html/ASSIGNMENT.html" \
     "_html/bow_at_banff_distributed_execution/ASSIGNMENT.html" \
-    "_html/bow_at_banff_lumped_calibration/ASSIGNMENT.html"
+    "_html/bow_at_banff_lumped_calibration/ASSIGNMENT.html" \
+    "_html/bow_at_banff_lumped_calibration/SOLUTION.html"
 
 # Adjust nested HTML image links to HydroLearn Studio asset paths
 perl -pi -e '
@@ -126,9 +133,9 @@ perl -0pi -e '
             "Figure 7.",
             "Serial lumped calibration workflow.",
         ],
-        "calibration_batch_lumped.png" => [
+        "calibration_lumped_async.png" => [
             "Figure 8.",
-            "Parallel lumped calibration workflow.",
+            "Asynchronous parallel DDS workflow.",
         ],
     );
     my $figure_style = q{text-align: center;};

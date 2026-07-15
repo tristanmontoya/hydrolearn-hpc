@@ -1,65 +1,72 @@
 # Sample Solution: Parallel Calibration of a Lumped Hydrologic Model
 
-This memo summarizes the completed conversion of the Bow River at Banff lumped SUMMA calibration workflow from a serial OSTRICH workflow to a Slurm and MPI workflow using `ParallelDDS`.
+This memo summarizes the conversion of the Bow River at Banff lumped SUMMA calibration workflow from a serial dynamically dimensioned search (DDS) optimization workflow using OSTRICH to a Slurm and MPI workflow using the parallel DDS algorithm.
 
 ## Serial Workflow
 
-The original calibration workflow uses the serial `DDS` algorithm. In that workflow, OSTRICH proposes one candidate parameter set, `scripts/run_trial.sh` applies the multipliers, runs SUMMA, calculates KGE, and writes the result to `results/KGE.txt`. OSTRICH then uses that result to choose the next candidate parameter set.
+The original workflow uses the serial DDS algorithm. In each iteration, OSTRICH proposes one candidate parameter set, `scripts/run_trial.sh` applies its parameter multipliers, SUMMA simulates streamflow, and the diagnostics script calculates the modified Kling-Gupta efficiency (KGE') over the aligned daily period from October 1, 2003, through September 30, 2005. OSTRICH uses the value written to `results/KGE.txt` to guide the search.
 
-Requesting more Slurm tasks for the serial `ostrich` executable would not make this workflow faster by itself. The serial optimizer evaluates one candidate at a time, so extra Slurm tasks would be allocated but unused unless some other part of the workflow explicitly used them.
-
-There are still useful opportunities for parallelism around a serial optimizer. If the model is a parallelizable executable (for example, a distributed model that can run multiple spatial units at once), then we could run the calibration iterations in sequence, but with each model using multiple cores. Another approach is to run independent serial calibrations with different random seeds or different initial guesses. Those approaches increase throughput (i.e., the number of model simulations per unit time) but they do not make a single serial DDS optimization evaluate multiple candidates at the same time.
+Requesting additional Slurm tasks for the serial `ostrich` executable would not make the calibration faster. Slurm would reserve the requested resources, but the serial optimizer would still evaluate one candidate at a time. A serial optimizer could still use a parallel model executable within each evaluation, or several independent serial calibrations could run concurrently with different random seeds or initial values. However, neither approach parallelizes the iterations of one DDS search. Parallelism across optimization iterations requires an algorithm that can evaluate multiple candidates at a time. The parallel DDS algorithm provides this capability by assigning independent model evaluations to MPI worker ranks under the management of a coordinator rank.
 
 ## Parallelization
 
-The solution changes the OSTRICH configuration from `ProgramType DDS` to `ProgramType ParallelDDS`, adds `ModelSubdir ostrich_worker_`, adds `BeginExtraDirs` for `model`, `obs`, `ostrich`, and `scripts`, and replaces the DDS block with `BeginParallelDDSAlg`. The archive script also honours `OUTPUT_ARCHIVE_DIR`, so each worker-count run can preserve its own best model archive while serial runs still write to `output_archive/`. The launch script then uses `srun` to start `OstrichMPI` with the specified number of tasks.
+To parallelize the calibration, the top-level `ostIn.txt` configuration file is modified by changing `ProgramType DDS` to `ProgramType ParallelDDS`, adding `ModelSubdir ostrich_worker_`, adding a `BeginExtraDirs`/`EndExtraDirs` block for `model`, `obs`, `ostrich`, and `scripts`, and replacing the serial `BeginDDSAlg`/`EndDDSAlg` block with a `BeginParallelDDSAlg`/`EndParallelDDSAlg` block. `ModelSubdir` specifies the rank-local directory prefix, whereas the `BeginExtraDirs`/`EndExtraDirs` block identifies the directories copied into each rank-local working directory. The launch script uses `srun` to start `OstrichMPI` with the task count requested from Slurm.
 
-Each MPI worker needs its own copies of the model inputs, scripts, generated SUMMA outputs, and KGE file so that independent model evaluations do not write to the same paths at the same time. Without those separate working directories, multiple MPI ranks could overwrite one another's parameter files, model outputs, or objective-function files.
+Each worker needs a separate working directory because every evaluation modifies parameter files and writes SUMMA output, diagnostics, and `results/KGE.txt` using the same relative paths. Rank-local copies prevent workers from overwriting one another's files. The worker directories also preserve the relative path structure expected by the existing scripts.
 
-The launch script calculates `task_count = worker_count + 1` because `ParallelDDS` uses one MPI rank as the OSTRICH coordinator and the remaining ranks as model-evaluation workers. The `nworkers=1` case therefore uses two MPI ranks and is the smallest valid `ParallelDDS` scaling case.
+The parallel DDS algorithm reserves one MPI rank as the coordinator. A run with $p$ model-evaluation workers therefore requires $p+1$ MPI tasks. The smallest scaling case uses two tasks: one coordinator and one worker.
 
-Even when keeping a fixed random seed and `MaxIterations = 40`, changing the number of workers can change the exact parameter sets evaluated. Since new parameter sets are proposed based on the results of previous evaluations, the search trajectory can diverge when the number of workers changes. The `nworkers=1` case evaluates one candidate at a time, while the `nworkers=2` and `nworkers=4` cases evaluate up to two and four candidates at a time, respectively. The optimizer will therefore propose different parameter sets, since it will have different KGE results to use in determining the next candidate.
+Keeping `RandomSeed 721734144` and `MaxIterations 40` fixed does not guarantee that every worker count evaluates the same parameter sets. Parallel DDS is asynchronous: candidate generation depends on the results available when a worker becomes free. Changing the number and completion order of concurrent evaluations changes the information available when later candidates are proposed, so the search trajectories and best KGE' values can diverge.
 
 ## Performance Evaluation
 
-The strong-scaling baseline is the one-worker `ParallelDDS` run, not the serial DDS run. This keeps the comparison within the same parallel algorithm and launch pathway.
+We use the one-worker parallel DDS run as the scaling baseline so that every case uses the same optimizer and MPI launch pathway. This is an instructional worker-scaling comparison with a fixed 40-evaluation optimization budget, not strict strong scaling of an identical computational workload, because the asynchronous searches can evaluate different parameter sets with different execution costs. The speedup and efficiency are
 
-Summary file: `strong_scaling_summary_6.csv`
+$$
+S_p(N)=\frac{T_1(N)}{T_p(N)}, \qquad E_p(N)=\frac{S_p(N)}{p},
+$$
 
-| Total MPI Tasks | Model-Evaluation Workers | Runtime (s) | Speedup | Efficiency |
-| ---: | ---: | ---: | ---: | ---: |
-| 2 | 1 | 857 | 1.00 | 1.00 |
-| 3 | 2 | 428 | 2.00 | 1.00 |
-| 5 | 4 | 252 | 3.40 | 0.85 |
+where $p$ is the number of model-evaluation workers and $T_1=1350\ \mathrm{s}$, corresponding to the one-worker case. The results are summarized in the following table:
 
-The speedup is calculated as `T_1 / T_N`, where `T_1` is the one-worker parallel runtime and `T_N` is the runtime with `N` model-evaluation workers. The strong-scaling efficiency is `speedup / N`.
+| Slurm Job ID | Total MPI Tasks | Model-Evaluation Workers | Best KGE' | Runtime (s) | Speedup | Parallel Efficiency |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 35 | 2 | 1 | 0.161631 | 1350 | 1.00 | 1.00 |
+| 36 | 3 | 2 | 0.353694 | 613 | 2.20 | 1.10 |
+| 37 | 4 | 3 | 0.147019 | 485 | 2.78 | 0.93 |
+| 38 | 5 | 4 | 0.263835 | 244 | 5.53 | 1.38 |
+| 39 | 6 | 5 | 0.591202 | 264 | 5.11 | 1.02 |
+| 40 | 7 | 6 | 0.329875 | 254 | 5.31 | 0.89 |
+| 41 | 8 | 7 | 0.374028 | 270 | 5.00 | 0.71 |
 
-Parallel calibration was found to significantly reduce wall time in this scaling study. The two-worker case was close to ideal scaling, while the four-worker case was faster than the baseline but below ideal scaling. This is expected because the coordinator rank performs search management, worker directories must be staged, file system activity increases, and different trial simulations may not take exactly the same amount of time.
+Adding model-evaluation workers substantially improves runtime through the four-worker case. Runtime decreases from 1350 seconds with one worker to 244 seconds with four workers, corresponding to a measured speedup of 5.53.
 
-The final `output_archive/KGE.txt` file contains the best KGE from the final four-worker run, not necessarily the best KGE across all scaling cases. The summary file reports best KGE values of `0.161631`, `0.353694`, and `0.263835` for the one-, two-, and four-worker runs, respectively. The best KGE observed across the scaling study was therefore `0.353694` from the two-worker run.
+The measured speedup is not consistently close to an ideal linear speedup. The three-worker case achieves a speedup of 2.78 compared with an ideal value of 3, whereas the seven-worker case achieves a speedup of 5.00 compared with an ideal value of 7. The apparent efficiencies above one in the two- and four-worker cases should not be interpreted as conclusive evidence of superlinear scaling. One possible explanation is that the evaluated parameter sets can have different model-execution costs.
+
+Several factors limit parallel efficiency in this workflow. In OSTRICH, the coordinator performs serial search-management work that can delay the dispatch of new candidates to workers. The coordinator also performs serial work at the end of the search, including rerunning the best parameter set to generate model output for archiving. Furthermore, launching MPI ranks and staging worker directories adds overhead, and concurrent workers contend for CPU and file-system resources while reading and writing NetCDF files and diagnostics. Workers left idle due to load imbalance also reduce efficiency; even for an asynchronous algorithm, this can occur at the end of the search when there are fewer remaining candidates than workers, or when workers evaluate parameter sets with different execution costs. Finally, a fixed optimization budget of 40 evaluations provides progressively fewer evaluations per worker as the worker count increases.
+
+For these measurements, the practical saturation point appears to be four model-evaluation workers, or five total MPI tasks. The five-, six-, and seven-worker cases take 264, 254, and 270 seconds, respectively, compared with 244 seconds for four workers. Beyond four workers, additional overhead, resource contention, and load imbalance outweigh the benefit of distributing evaluations among more workers.
 
 ## Recommendation and Reflection
 
-Parallelizing the calibration workflow is valuable because it can shorten turnaround time for calibration experiments, and it can increase the number of candidate parameter sets evaluated in a given experiment so as to improve the chance of finding a better solution.
+Parallelizing the calibration workflow is valuable because it increases model-evaluation throughput and shortens the turnaround time for calibration experiments. The present scaling cases each retain the same 40-evaluation optimization budget, but completing those evaluations sooner allows the group to run more independent calibrations, sensitivity studies, or model-structure experiments in a fixed amount of time.
 
-With a faster calibration workflow, the group can run more experiments in the same amount of time, which allows them to explore different model structures (e.g., discretization options, process representations, or parameterizations), run multiple independent calibrations with different random seeds or initial guesses, and run sensitivity or uncertainty studies more rapidly. Increasing the number of candidate evaluations per unit time allows the group to more thoroughly explore the parameter space and converge to a better solution.
+Each worker count should be a separate Slurm job because this gives every case an explicit resource request, its own job ID and accounting record, and an isolated archive. A single allocation sized for the largest case would leave resources idle during smaller cases and obscure per-case elapsed times.
 
-The scaling script requests enough resources for the largest run, which uses four model-evaluation workers and one coordinator. During the smaller scaling cases, some allocated tasks are idle: the one-worker case uses two MPI tasks, and the two-worker case uses three MPI tasks. This is acceptable for a small scaling study, but it is not the most efficient way to use a production allocation.
+Varying the number of model-evaluation workers results in different objective function values because the asynchronous parallel DDS algorithm's candidate generation depends on the results available when a worker becomes free. Since the 40-evaluation optimization budget remains fixed, it is not guaranteed that adding workers will improve the best candidate found. The best KGE' values in this study range from 0.147019 to 0.591202 across the seven scaling cases. The highest KGE' is 0.591202 from the five-worker run, but this does not establish five workers as statistically better for calibration quality. Multiple calibrations with independent random seeds would be required to compare solution quality for different worker counts.
 
-I recommend first running a short scaling study to choose an effective worker count, then submitting calibration jobs with only the resources needed for that worker count. For future scaling tests, each worker count could be submitted as a separate Slurm job or as a Slurm job array so that idle resources are not held during the smaller worker-count runs.
+Although a fixed 40-evaluation budget is used across worker counts, the fact that different worker counts follow different search trajectories means that the total cost of the 40 evaluations can differ, as certain parameter sets can take longer to evaluate than others. As such, this study does not strictly measure strong scaling of a fixed workload, but rather the effect of worker count on the time to complete a fixed number of candidate evaluations, which can be viewed as a practical measure of throughput for the research group.
+
+For future calibration studies, the group should perform a short scaling study before production runs and select a worker count near the point where additional workers cease to reduce runtime, if such a point exists. The highest-throughput configuration and the most resource-efficient configuration may differ, so the research group should also consider the total time to solution and practical constraints such as queue wait times and resource availability when selecting a worker count for production runs.
 
 ## Reproducibility Appendix
 
-Final `ostIn.txt`:
+Final OSTRICH configuration file `ostIn.txt`:
 
 ```text
 # Ostrich configuration file
 
-# Use the parallel DDS optimizer
 ProgramType  ParallelDDS
 ModelExecutable ./scripts/run_trial.sh
-
-# Stage rank-local working directories for model evaluations
 ModelSubdir ostrich_worker_
 ObjectiveFunction gcop
 
@@ -73,7 +80,6 @@ BeginFilePairs
 ostrich/multipliers.tpl ; ostrich/multipliers.txt
 EndFilePairs
 
-# ParallelDDS copies these input directories into each worker directory
 BeginExtraDirs
 model
 obs
@@ -123,7 +129,6 @@ EndConstraints
 # Random seed control
 RandomSeed 721734144
 
-# Configure the parallel DDS search
 BeginParallelDDSAlg
 PerturbationValue 0.20
 MaxIterations 40
@@ -131,77 +136,38 @@ UseInitialParamValues
 EndParallelDDSAlg
 ```
 
-Final `scripts/run_ostrich.sh`:
+Final Slurm launch script `run_ostrich.sh`:
 
 ```sh
 #!/usr/bin/env bash
-#SBATCH --job-name=parallel-calibration
-#SBATCH --nodes=2
-#SBATCH --ntasks=5
-#SBATCH --ntasks-per-node=4
+#SBATCH --job-name=bow-lumped-calib
+#SBATCH --ntasks=8
 #SBATCH --time=08:00:00
 #SBATCH --output=slurm-%x-%j.out
 set -euo pipefail
 
-# Preserve best models in the original case directory
+# Use the submission directory as the source case
+case_dir="${SLURM_SUBMIT_DIR:-${PWD}}"
+
+# Run each job in a separate copied case directory
+run_dir="${case_dir}/scaling_archive_${SLURM_JOB_ID}"
+mkdir -p "${run_dir}"
+cp -R "${case_dir}/ostIn.txt" "${case_dir}/model" "${case_dir}/obs" \
+    "${case_dir}/ostrich" "${case_dir}/scripts" "${run_dir}/"
+cd "${run_dir}"
+
+# Archive best models inside this job directory
 export PARALLEL_CALIBRATION_ROOT="${PWD}"
+export OUTPUT_ARCHIVE_DIR="${PWD}/output_archive"
 
-# Create a summary file for the scaling study
-summary_file="strong_scaling_summary_${SLURM_JOB_ID}.csv"
-archive_root="scaling_archive_${SLURM_JOB_ID}"
-printf "nworkers,ntasks,seconds,best_kge,archive_dir\n" > "${summary_file}"
-mkdir -p "${archive_root}"
-cp ostIn.txt scripts/run_ostrich.sh "${archive_root}/"
-
-# ParallelDDS uses one coordinator rank in addition to the worker ranks
-for worker_count in 1 2 4; do
-    # Calculate the total number of tasks needed for this worker count
-    task_count=$((worker_count + 1))
-
-    # Set the output archive directory for this worker-count run
-    run_archive="${archive_root}/workers_${worker_count}"
-    export OUTPUT_ARCHIVE_DIR="${PWD}/${run_archive}/output_archive"
-
-    # Clean previous run artifacts
-    rm -rf ostrich_worker_* Ost*.txt model_run.log "${run_archive}"
-
-    # Make a fresh output archive directory
-    mkdir -p "${OUTPUT_ARCHIVE_DIR}"
-
-    # Start the timer for this worker-count run
-    start_time="${SECONDS}"
-
-    # Run the parallel calibration with the current worker count
-    srun --ntasks="${task_count}" OstrichMPI
-
-    # Calculate the elapsed time for this worker-count run
-    elapsed_seconds=$((SECONDS - start_time))
-
-    # Read the best KGE from the current run into the variable `best_kge`
-    # or set `best_kge` to `NA` if the file does not exist
-    best_kge="NA"
-    if [ -f "${OUTPUT_ARCHIVE_DIR}/KGE.txt" ]; then
-        read -r best_kge _ < "${OUTPUT_ARCHIVE_DIR}/KGE.txt"
-    fi
-
-    # Keep output_archive aligned with the latest completed run
-    rm -rf output_archive
-    cp -r "${OUTPUT_ARCHIVE_DIR}" output_archive
-
-    printf "%s,%s,%s,%s,%s\n" "${worker_count}" "${task_count}" \
-        "${elapsed_seconds}" "${best_kge}" "${run_archive}" >> "${summary_file}"
-done
+# Run the parallel calibration with all allocated tasks
+srun --ntasks="${SLURM_NTASKS}" OstrichMPI
 ```
 
-Slurm job ID: `6`
+The virtual cluster resources reported by `sinfo -N -o "%N %P %c %t"` were:
 
-Summary file contents:
-
-```csv
-nworkers,ntasks,seconds,best_kge,archive_dir
-1,2,857,0.161631,scaling_archive_6/workers_1
-2,3,428,0.353694,scaling_archive_6/workers_2
-4,5,252,0.263835,scaling_archive_6/workers_4
+```text
+NODELIST      PARTITION CPUS STATE
+slurm-worker1 debug*       4 idle
+slurm-worker2 debug*       4 idle
 ```
-
-Best KGE from the final successful parallel run: `0.263835`
