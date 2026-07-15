@@ -6,6 +6,7 @@
 venv/
 
 # Compiled and generated build artefacts
+_*/
 build/
 dist/
 *.o

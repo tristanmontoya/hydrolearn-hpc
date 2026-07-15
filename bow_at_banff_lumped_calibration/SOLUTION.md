@@ -164,7 +164,7 @@ export OUTPUT_ARCHIVE_DIR="${PWD}/output_archive"
 srun --ntasks="${SLURM_NTASKS}" OstrichMPI
 ```
 
-The virtual cluster resources reported by `sinfo -N -o "%N %P %c %t"` were:
+Virtual cluster resources reported by `sinfo -N -o "%N %P %c %t"`:
 
 ```text
 NODELIST      PARTITION CPUS STATE
