@@ -4,6 +4,14 @@ This scenario focuses on a distributed SUMMA-mizuRoute workflow for the Bow Rive
 
 The workflow is currently implemented as a serial script that executes SUMMA once per GRU. Starting from this serial workflow, you will run the baseline model, modify the SUMMA portion to execute multiple GRUs at the same time, and evaluate how runtime and efficiency change as CPU cores are added.
 
+The diagnostic comparison uses the modified Kling-Gupta efficiency ($\operatorname{KGE}^{\prime}$) from [Kling et al. (2012)](https://doi.org/10.1016/j.jhydrol.2012.01.011) over the daily evaluation period from October 1, 2003, through September 30, 2005. For simulated and observed streamflow, let $r$ be their correlation, $\mu_s$ and $\mu_o$ be their means, and $\sigma_s$ and $\sigma_o$ be their standard deviations. The coefficient-of-variation ratio is $\gamma=(\sigma_s/\mu_s)/(\sigma_o/\mu_o)$, and the mean bias ratio is $\beta=\mu_s/\mu_o$. The diagnostic script computes
+
+$$
+\operatorname{KGE}^{\prime} = 1 - \sqrt{(r - 1)^2 + (\gamma - 1)^2 + (\beta - 1)^2}.
+$$
+
+Larger modified KGE values indicate better agreement between simulated and observed streamflow. After completing the simulation, the resulting value is written to the file `results/KGE.txt`.
+
 ## 1. Serial Workflow
 
 If you are using the [`vhpc-hydrotools` virtual cluster](https://github.com/tristanmontoya/vhpc-hydrotools), change into the repository checkout:
@@ -25,7 +33,7 @@ Then change into the case directory:
 cd bow_at_banff_distributed_execution
 ```
 
-Before editing anything, inspect the structure of the serial workflow. The workflow script executes SUMMA and mizuRoute, while the submission script requests computing resources from Slurm. Inspect the following files:
+Before editing anything, inspect the structure of the serial workflow. The workflow script executes SUMMA and mizuRoute, whereas the submission script requests computing resources from Slurm. Inspect the following files:
 
 ```
 scripts/run_SUMMA_mizuRoute.sh
@@ -65,19 +73,19 @@ sbatch scripts/submit_run.sh
 Slurm will print a line such as `Submitted batch job 123456`. Replace `123456` with your job ID when checking the queue:
 
 ```sh
-squeue -j 123456
+squeue -u "$USER" --Format=JobID,Name,StateCompact:4,TimeUsed:8,CPUsPerTask:12,NodeList
 ```
 
-After the job finishes, use the same job ID to inspect the Slurm output and diagnostics:
+After the job finishes, use the same job ID to inspect the Slurm output and modified KGE diagnostics:
 
 ```sh
-cat summa_123456.out
-cat summa_123456.err
+cat slurm-bow-distributed-123456.out
+cat slurm-bow-distributed-123456.err
 cat results/KGE.txt
 ls results/obs_vs_sim.png
 ```
 
-Then record the allocated CPU count and runtime from Slurm accounting:
+Then record the allocated CPU core count and runtime from Slurm accounting:
 
 ```sh
 sacct -j 123456 --format=JobID,NCPUS,Elapsed
@@ -92,9 +100,9 @@ sacct -j 123456 --format=JobID,NCPUS,Elapsed
 
 ## 2. Parallelization
 
-Figure 6 summarizes the computational pattern used in this scenario: independent spatial units can be distributed across processors before routing and output generation.
+Figure 6 illustrates the computational pattern used in this scenario: independent spatial units can be distributed across CPU cores before routing and output generation.
 
-![Workflow diagram showing a hydrologic model run divided into independent spatial units that are distributed to processors or nodes before routing and output generation.](../figures/workflow_parallel_execution.png)
+![Workflow diagram illustrating a generic model run divided into independent spatial units that are distributed across CPU cores before routing and output generation.](../figures/workflow_parallel_execution.png)
 
 ### 2.1 Determine Available Resources
 
@@ -128,7 +136,7 @@ The `&` operator launches each SUMMA process in the background, allowing both si
 
 ### 2.3 Modify the Slurm Submission Script
 
-Update the Slurm submission script so the requested resources match the parallel workflow. In `scripts/submit_run.sh`, change the requested CPU count from
+Update the Slurm submission script so the requested resources match the parallel workflow. In `scripts/submit_run.sh`, change the requested CPU core count from
 
 ```text
 #SBATCH --cpus-per-task=1
@@ -140,21 +148,21 @@ to
 #SBATCH --cpus-per-task=2
 ```
 
-Resubmit the job and record the allocated CPU count and runtime from the top-level job row in the Slurm accounting output, not the `.batch` or `.extern` rows. This two-core run is the first parallel experiment and provides a template for the additional processor counts below.
+Resubmit the job and record the allocated CPU core count and runtime from the top-level job row in the Slurm accounting output, not the `.batch` or `.extern` rows. This two-core run is the first parallel experiment and provides a template for the additional CPU core counts below.
 
-### 2.4 Additional Processor Counts
+### 2.4 Additional CPU Core Counts
 
-Repeat the experiment for 3, 4, and then each additional processor count up to the maximum number of CPU cores available in your current Slurm allocation, using approximately balanced GRU assignments for each experiment. Together with the serial and two-core cases, this gives a scaling sequence of 1, 2, 3, 4, ..., maximum available CPU cores. On the `vhpc-hydrotools` virtual cluster, the maximum available count may be limited by the CPU cores on your local machine. Run one processor count at a time because each run writes to the same case directory.
+Repeat the experiment for 3, 4, and then each additional CPU core count up to the maximum number of CPU cores available in your current Slurm allocation, using approximately balanced GRU assignments for each experiment. Together with the serial and two-core cases, this gives a scaling sequence of 1, 2, 3, 4, ..., maximum available CPU cores. On the `vhpc-hydrotools` virtual cluster, the maximum available count may be limited by the CPU cores on your local machine. Run one CPU core count at a time because each run writes to the same case directory.
 
 **Deliverable:** the *Parallelization* section of your memo must address the following questions:
 
 - Why can independent GRUs execute concurrently?
 - Why must both the workflow script **and** the Slurm submission script be modified?
-- How did you divide the 52 GRUs among processors?
+- How did you divide the 52 GRUs among CPU cores?
 
 ## 3. Performance Evaluation
 
-After each job finishes, record the allocated CPU count and runtime using Slurm accounting output:
+After each job finishes, record the allocated CPU core count and runtime using Slurm accounting output:
 
 ```sh
 sacct -j 123456 --format=JobID,NCPUS,Elapsed
@@ -175,11 +183,12 @@ Use the following formulas to compute the speedup and strong-scaling efficiency:
 
 Following the notation from Section 1.3 of this module, $N$ represents the fixed distributed simulation workload, $p$ is the number of CPU cores from the `NCPUS` field in the top-level Slurm accounting row, $T_1(N)$ is the one-core runtime, and $T_p(N)$ is the runtime using $p$ cores.
 
-**Deliverable:** the *Performance Evaluation* section of your memo must report the Slurm job IDs, the strong scaling table, speedup values, and parallel efficiency values. It must also address the following questions:
+**Deliverable:** the *Performance Evaluation* section of your memo must report the Slurm job IDs, the strong-scaling table, speedup values, and strong-scaling efficiency values. It must also address the following questions:
 
 - Did adding CPU cores improve runtime?
 - Was the speedup close to ideal?
-- If the speedup was not ideal, what factors might have limited the parallel efficiency of this distributed model execution workflow?
+- If the speedup was not ideal, what factors might have limited the strong-scaling efficiency of this distributed model execution workflow?
+- Is there a point beyond which adding CPU cores no longer meaningfully reduces runtime? If so, identify that point and suggest reasons for the observed performance plateau.
 
 ## 4. Recommendation and Reflection
 
@@ -195,8 +204,5 @@ At the end of your memo, include an appendix that contains the information neede
 
 **Deliverable:** the *Reproducibility Appendix* section of your memo must include:
 
-- The final versions of `scripts/run_SUMMA_mizuRoute.sh` and `scripts/submit_run.sh` used for the maximum CPU count.
-- The Slurm resource information from `sinfo -N -o "%N %P %c %t"` used to choose processor counts.
-- The Slurm accounting output from `sacct -j 123456 --format=JobID,NCPUS,Elapsed` for each job.
-- The `summa_123456.out` and `summa_123456.err` log files for the maximum CPU run.
-- The final diagnostic outputs from the maximum CPU run: `results/KGE.txt` and `results/obs_vs_sim.png`.
+- The final versions of `scripts/run_SUMMA_mizuRoute.sh` and `scripts/submit_run.sh` used for the maximum CPU core count.
+- The Slurm resource information from `sinfo -N -o "%N %P %c %t"` used to choose CPU core counts.

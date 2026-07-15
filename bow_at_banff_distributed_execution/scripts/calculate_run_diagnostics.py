@@ -21,7 +21,7 @@ CFS_PER_CMS = 35.3147
 # Build the command-line interface for reproducible basin-local diagnostics
 def process_command_line() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Calculate KGE and streamflow diagnostics for a completed run."
+        description="Calculate modified KGE and streamflow diagnostics for a completed run."
     )
     parser.add_argument(
         "--sim-file",
@@ -58,12 +58,12 @@ def process_command_line() -> argparse.Namespace:
     parser.add_argument(
         "--start-date",
         default="2003-10-01",
-        help="First date included in KGE calculation.",
+        help="First date included in the modified KGE calculation.",
     )
     parser.add_argument(
         "--end-date",
         default="2005-09-30",
-        help="Last date included in KGE calculation.",
+        help="Last date included in the modified KGE calculation.",
     )
     parser.add_argument(
         "--make-plot",
@@ -194,7 +194,7 @@ def write_hydrograph(merged: pd.DataFrame, kge: float, output_file: Path) -> Non
     fig, axis = plt.subplots(figsize=(10, 4))
     axis.plot(merged.index, merged["obs"], "k-", label="Observed")
     axis.plot(merged.index, merged["sim"], "r:", label="Simulated")
-    axis.set_title(f"Observed vs simulated streamflow (KGE = {kge:.3f})")
+    axis.set_title(f"Observed vs simulated streamflow (modified KGE = {kge:.3f})")
     axis.set_xlabel("Time")
     axis.set_ylabel("Streamflow (m^3/s)")
     axis.legend()
@@ -231,7 +231,7 @@ def main() -> None:
     if args.make_plot:
         write_hydrograph(merged, kge, output_dir / "obs_vs_sim.png")
 
-    LOGGER.info("KGE = %.6f", kge)
+    LOGGER.info("Modified KGE = %.6f", kge)
 
 
 if __name__ == "__main__":
