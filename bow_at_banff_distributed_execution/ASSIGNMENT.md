@@ -1,16 +1,18 @@
 # Scenario 1: Parallel Execution of a Distributed Hydrologic Model
 
-This scenario focuses on a distributed SUMMA-mizuRoute workflow for the Bow River basin in Alberta, Canada. The watershed domain is divided into 52 spatial units called grouped response units (GRUs). In this model configuration, SUMMA simulates each GRU independently, and mizuRoute routes the resulting runoff to the basin outlet, where streamflow is compared to observations at the Banff streamflow gauge.
+This scenario focuses on a distributed SUMMA-mizuRoute workflow for the watershed upstream of the `CAN_05BB001` gauge on the Bow River at Banff, Alberta, Canada. The watershed domain is divided into 52 spatial units called grouped response units (GRUs) to represent its spatial heterogeneity. In this model configuration, SUMMA simulates each GRU independently, and mizuRoute routes the resulting runoff to the basin outlet, where streamflow is compared with observations at the Banff gauge. The figure below shows the river network and GRUs used to represent the watershed:
+
+![River network and GRUs of the Bow River basin upstream of the Banff streamflow gauge.](../figures/Bow_at_Banff_Dist.png)
 
 The workflow is currently implemented as a serial script that executes SUMMA once per GRU. Starting from this serial workflow, you will run the baseline model, modify the SUMMA portion to execute multiple GRUs at the same time, and evaluate how runtime and efficiency change as CPU cores are added.
 
-The diagnostic comparison uses the modified Kling-Gupta efficiency ($\mathrm{KGE}^{\prime}$) from [Kling et al. (2012)](https://doi.org/10.1016/j.jhydrol.2012.01.011) over the daily evaluation period from October 1, 2003, through September 30, 2005. For simulated and observed streamflow, let $r$ be their correlation, $\mu_s$ and $\mu_o$ be their means, and $\sigma_s$ and $\sigma_o$ be their standard deviations. The coefficient-of-variation ratio is $\gamma=(\sigma_s/\mu_s)/(\sigma_o/\mu_o)$, and the mean bias ratio is $\beta=\mu_s/\mu_o$. The diagnostic script computes
+The comparison between simulated and observed streamflow at the Banff gauge uses the modified Kling-Gupta efficiency ($\mathrm{KGE}^{\prime}$) from [Kling et al. (2012)](https://doi.org/10.1016/j.jhydrol.2012.01.011) over the daily evaluation period from October 1, 2003, through September 30, 2005. The `scripts/calculate_run_diagnostics.py` diagnostic script computes:
 
 $$
-\mathrm{KGE}^{\prime} = 1 - \sqrt{(r - 1)^2 + (\gamma - 1)^2 + (\beta - 1)^2}.
+\mathrm{KGE}^{\prime} = 1 - \sqrt{(r - 1)^2 + (\gamma - 1)^2 + (\beta - 1)^2},
 $$
 
-Larger modified KGE values indicate better agreement between simulated and observed streamflow. After completing the simulation, the resulting value is written to the file `results/KGE.txt`.
+Here, $r$ is the correlation between simulated and observed streamflow, $\gamma=(\sigma_s/\mu_s)/(\sigma_o/\mu_o)$ is the coefficient-of-variation ratio, and $\beta=\mu_s/\mu_o$ is the mean bias ratio. The symbols $\mu_s$ and $\mu_o$ denote the simulated and observed means, while $\sigma_s$ and $\sigma_o$ denote the corresponding standard deviations. Larger modified KGE values indicate better agreement between simulated and observed streamflow. After completing the simulation, the script writes the resulting value to `results/KGE.txt`.
 
 ## 1. Serial Workflow
 
@@ -100,9 +102,9 @@ sacct -j 123456 --format=JobID,NCPUS,Elapsed
 
 ## 2. Parallelization
 
-Figure 6 illustrates the computational pattern used in this scenario: independent spatial units can be distributed across CPU cores before routing and output generation.
+The figure below shows how independent spatial units can be distributed across CPU cores before routing and output generation:
 
-![Workflow diagram illustrating a generic model run divided into independent spatial units that are distributed across CPU cores before routing and output generation.](../figures/workflow_parallel_execution.png)
+![Illustration of a typical distributed hydrologic modeling workflow.](../figures/workflow_parallel_execution.png)
 
 ### 2.1 Determine Available Resources
 
@@ -152,7 +154,7 @@ Resubmit the job and record the allocated CPU core count and runtime from the to
 
 ### 2.4 Additional CPU Core Counts
 
-Repeat the experiment for 3, 4, and then each additional CPU core count up to the maximum number of CPU cores available in your current Slurm allocation, using approximately balanced GRU assignments for each experiment. Together with the serial and two-core cases, this gives a scaling sequence of 1, 2, 3, 4, ..., maximum available CPU cores. On the `vhpc-hydrotools` virtual cluster, the maximum available count may be limited by the CPU cores on your local machine. Run one CPU core count at a time because each run writes to the same case directory.
+Repeat the experiment for 3, 4, and then each additional CPU core count up to the maximum number of CPU cores available in your current Slurm allocation, using approximately balanced GRU assignments for each experiment. Including the serial and two-core cases, test each CPU core count from 1 through the maximum available. On the `vhpc-hydrotools` virtual cluster, the maximum available count may be limited by the CPU cores on your local machine. Run one CPU core count at a time because each run writes to the same case directory.
 
 **Deliverable:** the *Parallelization* section of your memo must address the following questions:
 

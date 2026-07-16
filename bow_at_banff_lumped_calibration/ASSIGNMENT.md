@@ -1,16 +1,16 @@
 # Scenario 2: Parallel Calibration of a Lumped Hydrologic Model
 
-This scenario focuses on a lumped hydrologic model calibration workflow for the Bow River basin upstream of the Banff streamflow gauge in Alberta, Canada. Starting from a serial calibration workflow, you will convert it to a parallel workflow that uses Slurm and MPI, then run a simple scaling test to evaluate the performance of the parallel workflow.
+This scenario focuses on a lumped hydrologic model calibration workflow for the watershed upstream of the `CAN_05BB001` gauge on the Bow River at Banff, Alberta, Canada. Starting from a serial calibration workflow, you will convert it to a parallel workflow that uses Slurm and MPI, then run a simple scaling test to evaluate the performance of the parallel workflow.
 
 ## 1. Serial Workflow
 
-In this scenario, the OSTRICH optimization toolkit is used to calibrate a lumped SUMMA model for the Bow River basin upstream of the Banff streamflow gauge. The starting point is a serial calibration workflow that uses the Dynamically Dimensioned Search (DDS) algorithm.
+In this scenario, the OSTRICH optimization toolkit is used to calibrate a lumped SUMMA model for the watershed upstream of the Banff gauge. The starting point is a serial calibration workflow that uses the Dynamically Dimensioned Search (DDS) algorithm.
 
 Compared with the distributed workflow in Scenario 1, this setup is simplified so that the calibration runs quickly enough for an instructional scaling test. The SUMMA model is configured in lumped form, where all spatial units are aggregated into a single basin representation. A separate routing model, which would normally combine the results from the spatial units to produce a single streamflow hydrograph, is not required in the lumped model.
 
-Figure 7 illustrates the serial calibration pattern: OSTRICH proposes one candidate parameter set, the lumped model simulates streamflow, and the objective function is evaluated by comparing the simulated streamflow to observed streamflow.
+The figure below illustrates the serial calibration pattern: OSTRICH proposes one candidate parameter set, the lumped model simulates streamflow, and the objective function is evaluated by comparing the simulated streamflow to observed streamflow:
 
-![Calibration workflow diagram showing one candidate parameter set evaluated by a lumped model before the optimizer proposes new trial parameters.](../figures/calibration_lumped.png)
+![Illustration of a typical serial lumped hydrologic model calibration workflow.](../figures/calibration_lumped.png)
 
 Conceptually, the calibration problem is to find the calibration vector $\boldsymbol{\theta}^*$ that maximizes agreement between simulated and observed streamflow:
 
@@ -104,7 +104,7 @@ ls output_archive
 
 **Deliverable:** the *Serial Workflow* section of your memo must provide a high-level overview of the workflow and address the following questions:
 
-- What would happen if we requested four Slurm tasks for the serial run, for example by setting `--ntasks=4`? Would the workflow run faster? Why or why not?
+- What would happen if we requested multiple Slurm tasks for the serial run, for example by setting `--ntasks=4`? Would the workflow run faster? Why or why not?
 - What opportunities still exist for parallelism when the optimization algorithm itself is serial?
 - What, conceptually, must change in the optimization method to allow parallelism across optimization iterations?
 
@@ -112,11 +112,12 @@ ls output_archive
 
 OSTRICH includes a parallel version of the DDS algorithm, which evaluates multiple candidate parameter sets at the same time. The parallel DDS algorithm uses MPI to distribute the model evaluations across multiple worker ranks. Each worker rank runs a separate instance of the SUMMA model with a different candidate parameter set, and the results are sent back to the coordinator rank, which manages the optimization process. We will now modify the serial workflow to use the parallel DDS algorithm.
 
-Figure 8 illustrates the asynchronous parallel DDS workflow used in this exercise. The coordinator dispatches candidate parameter sets to available workers, and each worker independently executes `scripts/run_trial.sh` to run the lumped SUMMA model and calculate modified KGE. When a worker completes an evaluation, the coordinator incorporates the returned objective function value into the search and, if the evaluation budget is not exhausted, dispatches a new candidate to that worker without waiting for the other workers to finish their current evaluations.
+The figure below illustrates the asynchronous parallel DDS workflow used in this exercise. The coordinator dispatches candidate parameter sets to available workers, and each worker independently executes `scripts/run_trial.sh` to run the lumped SUMMA model and calculate modified KGE. When a worker completes an evaluation, the coordinator incorporates the returned objective function value into the search and, if the evaluation budget is not exhausted, dispatches a new candidate to that worker without waiting for the other workers to finish their current evaluations:
 
-![Asynchronous parallel DDS workflow diagram showing candidates dispatched to workers and each available worker receiving a new candidate after returning a completed objective function evaluation.](../figures/calibration_lumped_async.png)
+![Illustration of a typical asynchronous parallel hydrologic model calibration workflow.](../figures/calibration_lumped_async.png)
 
 To use the parallel DDS algorithm, you will first modify the OSTRICH input file `ostIn.txt`, which is initially set up to run the serial DDS algorithm. Three main changes are required to `ostIn.txt` to switch from serial to parallel DDS:
+
 1. Select the parallel DDS algorithm
 2. Tell OSTRICH how to create worker directories
 3. Replace the serial `BeginDDSAlg`/`EndDDSAlg` block that specifies the parameters with a `BeginParallelDDSAlg`/`EndParallelDDSAlg` block using the same parameters.
@@ -259,7 +260,7 @@ Then record the total task count and runtime for each completed job, using Slurm
 sacct -j 123456.0 --format=JobID,NTasks,Elapsed
 ```
 
-The `.0` suffix selects the `OstrichMPI` job step. Use `NTasks - 1` as the number of model-evaluation workers. Based on the Slurm accounting output and the per-job archives, create a table with these columns:
+The `.0` suffix selects the `OstrichMPI` job step. Based on the Slurm accounting output and the per-job archives, create a table with these columns:
 
 - Slurm job ID
 - Total MPI tasks
