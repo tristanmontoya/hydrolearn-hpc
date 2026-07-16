@@ -1,10 +1,8 @@
-# Bow River at Banff lumped calibration
+# Bow River at Banff: Lumped Model Calibration
 
-This directory contains the current local OSTRICH calibration case for a lumped SUMMA model of the Bow River basin upstream of the Banff streamflow gauge `CAN_05BB001`. The SUMMA domain contains one grouped response unit (GRU) and one hydrologic response unit (HRU).
+This directory contains the serial OSTRICH calibration case for a lumped SUMMA model of the Bow River basin upstream of the Banff streamflow gauge `CAN_05BB001`. The SUMMA domain contains one grouped response unit (GRU) and one hydrologic response unit (HRU).
 
-The case requires external `ostrich` and `summa.exe` executables. See the top-level README for tested executable versions.
-
-The assignment instructions are in `ASSIGNMENT.md`.
+The case requires `ostrich` and `summa.exe`; see the top-level README for tested versions. Assignment instructions are provided in `ASSIGNMENT.md`.
 
 ## Layout
 
@@ -29,16 +27,10 @@ bow_at_banff_lumped_calibration/
 
 `model/settings/SUMMA/` contains the SUMMA configuration, attributes, parameter tables, state files, and trial parameter files.
 
-`model/simulations/run1/SUMMA/` contains the current SUMMA output files used by the diagnostics script.
-
-`ostIn.txt` runs `scripts/run_trial.sh` with DDS for 40 iterations, optimizes a KGE-based objective, and preserves the best trial with `scripts/save_best.sh`.
+`ostIn.txt` runs `scripts/run_trial.sh` with serial DDS for 40 evaluations, minimizes negative modified KGE, and preserves the best trial with `scripts/save_best.sh`.
 `ostrich/` contains the multiplier template and current multiplier values.
 
-`results/` contains diagnostics from the latest completed run. The bundled results have KGE `0.545978` over `2003-10-01` through `2005-09-30`.
-
-`output_archive/` contains the best-trial archive written by `scripts/save_best.sh`, including the best `trialParams.nc`, `run1_day.nc`, diagnostics, multiplier files, and OSTRICH logs.
-
-## Local calibration
+## Serial Calibration
 
 Run the calibration from this directory:
 

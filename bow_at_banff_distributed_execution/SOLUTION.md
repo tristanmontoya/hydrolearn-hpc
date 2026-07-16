@@ -10,8 +10,6 @@ SUMMA is naturally parallelizable because GRUs are independent. Output concatena
 
 Simply requesting more CPU cores from Slurm does not improve performance because the serial workflow runs/launches only one SUMMA process at a time.
 
----
-
 ## 2. Parallelization
 
 Example two-core implementation:
@@ -40,26 +38,22 @@ Example balanced decompositions:
 - 4 cores: 13 GRUs each
 - 8 cores: approximately 6–7 GRUs per core
 
----
-
 ## 3. Performance Evaluation
 
 Example results:
 
-| CPU Cores | Runtime (s) | Speedup | Efficiency |
-|---:|---:|---:|---:|
-|1|360|1.00|1.00|
-|2|195|1.85|0.93|
-|3|145|2.48|0.83|
-|4|120|3.00|0.75|
+| Slurm Job ID | CPU Cores | Runtime (s) | Speedup | Efficiency |
+| ---: | ---: | ---: | ---: | ---: |
+|  | 1 | 360 | 1.00 | 1.00 |
+|  | 2 | 195 | 1.85 | 0.93 |
+|  | 3 | 145 | 2.48 | 0.83 |
+|  | 4 | 120 | 3.00 | 0.75 |
 
 Speedup becomes sublinear because of load imbalance, serial workflow components, file I/O, and process-launch overhead.
 
 These are **strong-scaling** experiments because the workload (52 GRUs) remains fixed.
 
 Fastest is not always best if resource efficiency matters. The optimal processor count is typically the point just before efficiency drops sharply.
-
----
 
 ## 4. Recommendation and Reflection
 
@@ -71,8 +65,6 @@ Larger watersheds generally provide better scalability because there is more par
 
 Before production runs, perform a scaling study to identify an efficient processor count instead of simply requesting the maximum available resources.
 
-
----
 
 ## 5. Reproducibility Appendix
 
