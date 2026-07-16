@@ -15,13 +15,13 @@ Figure 7 illustrates the serial calibration pattern: OSTRICH proposes one candid
 Conceptually, the calibration problem is to find the calibration vector $\boldsymbol{\theta}^*$ that maximizes agreement between simulated and observed streamflow:
 
 $$
-\boldsymbol{\theta}^* = \operatorname*{arg\,max}_{\boldsymbol{\theta} \in \boldsymbol{\Theta}}\, \operatorname{KGE}^{\prime}\!\left(\mathbf{q}_s(\boldsymbol{\theta}), \mathbf{q}_o\right).
+\boldsymbol{\theta}^* = \arg\max_{\boldsymbol{\theta} \in \boldsymbol{\Theta}}\, \mathrm{KGE}^{\prime}\!\left(\mathbf{q}_s(\boldsymbol{\theta}), \mathbf{q}_o\right).
 $$
 
-Here, $\boldsymbol{\theta}$ is the vector of parameter multipliers, $\boldsymbol{\Theta} \subset \mathbb{R}^d$ is the bounded parameter domain defined by the lower and upper limits specified in `ostIn.txt`, $d$ is the number of parameters being calibrated, $\mathbf{q}_s(\boldsymbol{\theta})$ is the simulated streamflow produced by SUMMA for that parameter vector, and $\mathbf{q}_o$ is the observed streamflow over the calibration period. This workflow uses the modified Kling-Gupta efficiency $\operatorname{KGE}^{\prime}$ ([Kling et al., 2012](https://doi.org/10.1016/j.jhydrol.2012.01.011)), which is defined in terms of the correlation $r = \operatorname{corr}(\mathbf{q}_s, \mathbf{q}_o)$, coefficient-of-variation ratio $\gamma = (\sigma_s / \mu_s) / (\sigma_o / \mu_o)$, and mean bias ratio $\beta = \mu_s / \mu_o$. Here, $\mu_s$ and $\mu_o$ are the simulated and observed means, and $\sigma_s$ and $\sigma_o$ are the corresponding standard deviations. The resulting metric is
+Here, $\boldsymbol{\theta}$ is the vector of parameter multipliers, $\boldsymbol{\Theta} \subset \mathbb{R}^d$ is the bounded parameter domain defined by the lower and upper limits specified in `ostIn.txt`, $d$ is the number of parameters being calibrated, $\mathbf{q}_s(\boldsymbol{\theta})$ is the simulated streamflow produced by SUMMA for that parameter vector, and $\mathbf{q}_o$ is the observed streamflow over the calibration period. This workflow uses the modified Kling-Gupta efficiency $\mathrm{KGE}^{\prime}$ ([Kling et al., 2012](https://doi.org/10.1016/j.jhydrol.2012.01.011)), which is defined in terms of the correlation $r = \mathrm{corr}(\mathbf{q}_s, \mathbf{q}_o)$, coefficient-of-variation ratio $\gamma = (\sigma_s / \mu_s) / (\sigma_o / \mu_o)$, and mean bias ratio $\beta = \mu_s / \mu_o$. Here, $\mu_s$ and $\mu_o$ are the simulated and observed means, and $\sigma_s$ and $\sigma_o$ are the corresponding standard deviations. The resulting metric is
 
 $$
-\operatorname{KGE}^{\prime} = 1 - \sqrt{(r - 1)^2 + (\gamma - 1)^2 + (\beta - 1)^2}.
+\mathrm{KGE}^{\prime} = 1 - \sqrt{(r - 1)^2 + (\gamma - 1)^2 + (\beta - 1)^2}.
 $$
 
 Larger modified KGE values indicate better agreement between simulated and observed streamflow.

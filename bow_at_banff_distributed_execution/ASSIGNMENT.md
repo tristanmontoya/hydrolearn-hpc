@@ -4,10 +4,10 @@ This scenario focuses on a distributed SUMMA-mizuRoute workflow for the Bow Rive
 
 The workflow is currently implemented as a serial script that executes SUMMA once per GRU. Starting from this serial workflow, you will run the baseline model, modify the SUMMA portion to execute multiple GRUs at the same time, and evaluate how runtime and efficiency change as CPU cores are added.
 
-The diagnostic comparison uses the modified Kling-Gupta efficiency ($\operatorname{KGE}^{\prime}$) from [Kling et al. (2012)](https://doi.org/10.1016/j.jhydrol.2012.01.011) over the daily evaluation period from October 1, 2003, through September 30, 2005. For simulated and observed streamflow, let $r$ be their correlation, $\mu_s$ and $\mu_o$ be their means, and $\sigma_s$ and $\sigma_o$ be their standard deviations. The coefficient-of-variation ratio is $\gamma=(\sigma_s/\mu_s)/(\sigma_o/\mu_o)$, and the mean bias ratio is $\beta=\mu_s/\mu_o$. The diagnostic script computes
+The diagnostic comparison uses the modified Kling-Gupta efficiency ($\mathrm{KGE}^{\prime}$) from [Kling et al. (2012)](https://doi.org/10.1016/j.jhydrol.2012.01.011) over the daily evaluation period from October 1, 2003, through September 30, 2005. For simulated and observed streamflow, let $r$ be their correlation, $\mu_s$ and $\mu_o$ be their means, and $\sigma_s$ and $\sigma_o$ be their standard deviations. The coefficient-of-variation ratio is $\gamma=(\sigma_s/\mu_s)/(\sigma_o/\mu_o)$, and the mean bias ratio is $\beta=\mu_s/\mu_o$. The diagnostic script computes
 
 $$
-\operatorname{KGE}^{\prime} = 1 - \sqrt{(r - 1)^2 + (\gamma - 1)^2 + (\beta - 1)^2}.
+\mathrm{KGE}^{\prime} = 1 - \sqrt{(r - 1)^2 + (\gamma - 1)^2 + (\beta - 1)^2}.
 $$
 
 Larger modified KGE values indicate better agreement between simulated and observed streamflow. After completing the simulation, the resulting value is written to the file `results/KGE.txt`.
