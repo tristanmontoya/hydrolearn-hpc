@@ -57,7 +57,7 @@ An example summary is shown below.
 |7|7|67|4.94|0.71|
 |8|8|59|5.61|0.70|
 
-The detailed workload distribution across CPU cores is also listed below.
+GRU decomposition used for each CPU-core count is also listed below.
 
 | Slurm Job ID | CPU Cores | Average GRUs per Core | Core 1 | Core 2 | Core 3 | Core 4 | Core 5 | Core 6 | Core 7 | Core 8 |
 |---:|---:|---:|:---|:---|:---|:---|:---|:---|:---|:---|
@@ -86,10 +86,48 @@ The results also demonstrate the tradeoff between minimizing absolute runtime an
 
 ## Reproducibility Appendix
 
-Include the following information to reproduce the experiments:
+Final version of `scripts/run_SUMMA_mizuRoute.sh` for the maximum CPU-core configuration (8 cores):
 
-- Final version of `scripts/run_SUMMA_mizuRoute.sh` for the maximum CPU-core configuration.
-- Final version of `scripts/submit_run.sh`.
-- Slurm resource information from `sinfo -N -o "%N %P %c %t"`.
-- Runtime, speedup, and efficiency table for all scaling experiments.
-- GRU decomposition used for each CPU-core count.
+```
+#!/bin/bash
+# Run SUMMA in parallel across GRUs using background processes
+
+summa_exe="./bin/summa"
+
+# Launch 8 parallel SUMMA processes with GRU decomposition (52 GRUs total)
+"${summa_exe}" -m "${summa_filemanager}" -g 1 6 -r never &
+"${summa_exe}" -m "${summa_filemanager}" -g 7 6 -r never &
+"${summa_exe}" -m "${summa_filemanager}" -g 13 6 -r never &
+"${summa_exe}" -m "${summa_filemanager}" -g 19 6 -r never &
+"${summa_exe}" -m "${summa_filemanager}" -g 25 7 -r never &
+"${summa_exe}" -m "${summa_filemanager}" -g 32 7 -r never &
+"${summa_exe}" -m "${summa_filemanager}" -g 39 7 -r never &
+"${summa_exe}" -m "${summa_filemanager}" -g 46 7 -r never &
+
+# Wait for all SUMMA processes to complete before routing
+wait
+
+# Run mizuRoute (serial component)
+./bin/mizuRoute -m ./settings/mizuRoute_filemanager.txt
+```
+
+Final version of `scripts/submit_run.sh`:
+```
+#!/bin/bash
+#SBATCH --job-name=bow-distributed
+#SBATCH --output=slurm-%x-%j.out
+#SBATCH --error=slurm-%x-%j.err
+#SBATCH --time=00:30:00
+#SBATCH --ntasks=8
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=300MB
+
+# Run the parallel workflow
+./scripts/run_SUMMA_mizuRoute.sh
+```
+Slurm resource information from `sinfo -N -o "%N %P %c %t"`:
+```
+NODELIST      PARTITION CPUS STATE
+slurm-worker1 debug*       4 idle
+slurm-worker2 debug*       4 idle
+```
