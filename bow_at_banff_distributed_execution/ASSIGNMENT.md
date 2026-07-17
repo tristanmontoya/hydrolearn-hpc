@@ -136,19 +136,21 @@ wait
 
 The `&` operator launches each SUMMA process in the background, allowing both simulations to execute concurrently. The `wait` command then pauses the script until **both** SUMMA processes have completed before continuing to mizuRoute.
 
-### 2.3 Modify the Slurm Submission Script
-
-Update the Slurm submission script so the requested resources match the parallel workflow. In `scripts/submit_run.sh`, change the requested CPU core count from
+Update the Slurm submission script so that the requested resources match the parallel workflow. In `scripts/submit_run.sh`, increase the number of requested tasks from:
 
 ```text
+#SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 ```
 
 to
 
 ```text
-#SBATCH --cpus-per-task=2
+#SBATCH --ntasks=2
+#SBATCH --cpus-per-task=1
 ```
+
+This requests two independent tasks, with each task assigned one CPU core. Each task runs an independent SUMMA simulation for a different subset of GRUs. Because the GRUs do not communicate during model execution, they can be executed in parallel as separate tasks. Slurm will automatically allocate the requested resources across the available compute nodes. 
 
 Resubmit the job and record the allocated CPU core count and runtime from the top-level job row in the Slurm accounting output, not the `.batch` or `.extern` rows. This two-core run is the first parallel experiment and provides a template for the additional CPU core counts below.
 
