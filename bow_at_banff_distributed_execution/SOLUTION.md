@@ -48,12 +48,31 @@ An example summary is shown below.
 
 | Slurm Job ID | CPU Cores | Runtime (s) | Speedup | Parallel Efficiency |
 | ---: | ---: | ---: | ---: | ---: |
-|101|1|360|1.00|1.00|
-|102|2|195|1.85|0.93|
-|103|3|145|2.48|0.83|
-|104|4|120|3.00|0.75|
+|1|1|331|1.00|1.00|
+|2|2|189|1.75|0.88|
+|3|3|144|2.30|0.77|
+|4|4|111|2.98|0.75|
+|5|5|90|3.68|0.74|
+|6|6|85|3.89|0.65|
+|7|7|67|4.94|0.71|
+|8|8|59|5.61|0.70|
 
-Adding CPU cores substantially reduces runtime, although the measured speedup is less than the ideal linear speedup. The primary reasons include serial components of the workflow (such as routing and diagnostics), process-launch overhead, filesystem I/O contention, and load imbalance caused by different GRUs requiring different amounts of computation.
+The detailed workload distribution across CPU cores is also listed below.
+
+| Slurm Job ID | CPU Cores | Average GRUs per Core | Core 1 | Core 2 | Core 3 | Core 4 | Core 5 | Core 6 | Core 7 | Core 8 |
+|---:|---:|---:|:---|:---|:---|:---|:---|:---|:---|:---|
+| 1 | 1 | 52.0 | 1–52 | | | | | | | |
+| 2 | 2 | 26.0 | 1–26 | 27–52 | | | | | | |
+| 3 | 3 | 17.3 | 1–17 | 18–34 | 35–52 | | | | | |
+| 4 | 4 | 13.0 | 1–13 | 14–26 | 27–39 | 40–52 | | | | |
+| 5 | 5 | 10.4 | 1–10 | 11–20 | 21–30 | 31–41 | 42–52 | | | |
+| 6 | 6 | 8.7 | 1–9 | 10–18 | 19–27 | 28–36 | 37–45 | 46–52 | | |
+| 7 | 7 | 7.4 | 1–7 | 8–14 | 15–21 | 22–28 | 29–35 | 36–42 | 43–52 | |
+| 8 | 8 | 6.5 | 1–6 | 7–12 | 13–18 | 19–24 | 25–31 | 32–38 | 39–45 | 46–52 |
+
+Adding CPU cores substantially reduces runtime, although the measured speedup is less than the ideal linear speedup (see figure below). The primary reasons include serial components of the workflow (such as routing and diagnostics), process-launch overhead, filesystem I/O contention, and load imbalance caused by different GRUs requiring different amounts of computation.
+
+![](speedup_scaling_results.png)
 
 As additional CPU cores are added, these overheads become increasingly important and eventually dominate the execution time. Consequently, there is typically a practical saturation point beyond which requesting additional CPU cores provides little additional reduction in wall-clock runtime. For production simulations, the preferred processor count is often the point just before this performance plateau.
 
