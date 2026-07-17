@@ -92,11 +92,6 @@ The results also demonstrate the tradeoff between minimizing absolute runtime an
 Final version of `scripts/run_SUMMA_mizuRoute.sh` for the maximum CPU-core configuration (8 cores):
 
 ```
-#!/bin/bash
-# Run SUMMA in parallel across GRUs using background processes
-
-summa_exe="./bin/summa"
-
 # Launch 8 parallel SUMMA processes with GRU decomposition (52 GRUs total)
 "${summa_exe}" -m "${summa_filemanager}" -g 1 6 -r never &
 "${summa_exe}" -m "${summa_filemanager}" -g 7 6 -r never &
@@ -109,10 +104,8 @@ summa_exe="./bin/summa"
 
 # Wait for all SUMMA processes to complete before routing
 wait
-
-# Run mizuRoute (serial component)
-./bin/mizuRoute -m ./settings/mizuRoute_filemanager.txt
 ```
+Note the above only shows the SUMMA model execution part within `scripts/run_SUMMA_mizuRoute.sh`.
 
 Final version of `scripts/submit_run.sh`:
 ```
