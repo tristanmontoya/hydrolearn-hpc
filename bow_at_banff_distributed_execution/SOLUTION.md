@@ -22,11 +22,16 @@ wait
 
 The `&` operator launches each SUMMA process in the background so they execute simultaneously, while the `wait` command ensures that all SUMMA simulations finish before mizuRoute begins routing.
 
-The Slurm submission script must also be modified so that the allocated computing resources match the parallel workflow:
+The Slurm submission script `submit_run.sh` must also be modified so that the allocated computing resources match the parallel workflow. For example, the two-core run requires changing the line
 
-```diff
--#SBATCH --cpus-per-task=1
-+#SBATCH --cpus-per-task=2
+```bash
+#SBATCH --cpus-per-task=1
+```
+
+to the following:
+
+```bash
+#SBATCH --cpus-per-task=2
 ```
 
 Both files must be modified because they perform different roles. The workflow script determines how many SUMMA processes are launched, whereas the Slurm submission script reserves sufficient CPU cores for those processes. Changing only one of the two files would either leave CPU cores unused or oversubscribe the allocated resources.
@@ -42,9 +47,7 @@ S_p(N)=\frac{T_1(N)}{T_p(N)}, \qquad
 E_p(N)=\frac{S_p(N)}{p}
 $$
 
-where $$T_1$$ is the one-core runtime and $$p$$ is the number of allocated CPU cores.
-
-An example summary is shown below.
+where $$T_1$$ is the one-core runtime and $$p$$ is the number of allocated CPU cores. The results are summarized in the table below:
 
 | Slurm Job ID | CPU Cores | Runtime (s) | Speedup | Parallel Efficiency |
 | ---: | ---: | ---: | ---: | ---: |
@@ -57,7 +60,7 @@ An example summary is shown below.
 |7|7|67|4.94|0.71|
 |8|8|59|5.61|0.70|
 
-GRU decomposition used for each CPU-core count is also listed below.
+The following table shows how the 52 GRUs were assigned to each CPU core for different processor counts, noting that the CPU cores are numbered according to the order that the SUMMA processes are launched:
 
 | Slurm Job ID | CPU Cores | Average GRUs per Core | Core 1 | Core 2 | Core 3 | Core 4 | Core 5 | Core 6 | Core 7 | Core 8 |
 |---:|---:|---:|:---|:---|:---|:---|:---|:---|:---|:---|
@@ -70,11 +73,11 @@ GRU decomposition used for each CPU-core count is also listed below.
 | 7 | 7 | 7.4 | 1–7 | 8–14 | 15–21 | 22–28 | 29–35 | 36–42 | 43–52 | |
 | 8 | 8 | 6.5 | 1–6 | 7–12 | 13–18 | 19–24 | 25–31 | 32–38 | 39–45 | 46–52 |
 
-Adding CPU cores substantially reduces runtime, although the measured speedup is less than the ideal linear speedup (see figure below). The primary reasons include serial components of the workflow (such as routing and diagnostics), process-launch overhead, filesystem I/O contention, and load imbalance caused by different GRUs requiring different amounts of computation.
+Adding CPU cores substantially reduces runtime, although the measured speedup is less than the ideal linear speedup. The primary reasons for this include serial components of the workflow (such as routing and diagnostics), process-launch overhead, filesystem I/O contention, and load imbalance caused by different GRUs requiring different amounts of computation. The following figure plots the runtime, speedup, and parallel efficiency as a function of the number of CPU cores:
 
 <img src="speedup_scaling_results.png" width="70%">
 
-As additional CPU cores are added, these overheads become increasingly important and eventually dominate the execution time. Consequently, there is typically a practical saturation point beyond which requesting additional CPU cores provides little additional reduction in wall-clock runtime. For production simulations, the preferred processor count is often the point just before this performance plateau.
+As additional cores are added, these overheads become increasingly important and eventually dominate the execution time. Consequently, there is typically a practical saturation point beyond which requesting additional CPU cores provides little additional reduction in wall-clock runtime. For production simulations, the preferred processor count is often the point just before this performance plateau.
 
 ## Recommendation and Reflection
 
