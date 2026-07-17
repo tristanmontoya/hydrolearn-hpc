@@ -72,7 +72,7 @@ The detailed workload distribution across CPU cores is also listed below.
 
 Adding CPU cores substantially reduces runtime, although the measured speedup is less than the ideal linear speedup (see figure below). The primary reasons include serial components of the workflow (such as routing and diagnostics), process-launch overhead, filesystem I/O contention, and load imbalance caused by different GRUs requiring different amounts of computation.
 
-![](speedup_scaling_results.png)
+<img src="speedup_scaling_results.png" width="70%">
 
 As additional CPU cores are added, these overheads become increasingly important and eventually dominate the execution time. Consequently, there is typically a practical saturation point beyond which requesting additional CPU cores provides little additional reduction in wall-clock runtime. For production simulations, the preferred processor count is often the point just before this performance plateau.
 
