@@ -81,11 +81,11 @@ The following table shows how the 52 GRUs were assigned to each CPU core for dif
 | 52 | 7 | 7.4 | 1–8 | 9–16 | 17–24 | 25–31 | 32–38 | 39–45 | 46–52 | |
 | 53 | 8 | 6.5 | 1–6 | 7–12 | 13–18 | 19–24 | 25–31 | 32–38 | 39–45 | 46–52 |
 
-Adding CPU cores substantially reduces runtime, although the measured speedup is less than the ideal linear speedup. The primary reasons for this include serial components of the workflow (such as routing and diagnostics), process-launch overhead, filesystem I/O contention, and load imbalance caused by different GRUs requiring different amounts of computation. The following figure plots the runtime, speedup, and strong-scaling efficiency as a function of the number of CPU cores:
+The following figure plots the runtime, speedup, and strong-scaling efficiency as a function of the number of CPU cores:
 
 <img src="../figures/speedup_scaling_results.png" width="70%">
 
-Runtime decreases at every tested core count, from 288 seconds with one core to 85 seconds with eight cores. The gains generally become smaller as cores are added, but the decrease from 97 seconds with seven cores to 85 seconds with eight cores remains noticeable. Strong-scaling efficiency decreases from 0.76 with two cores to about 0.42 with seven and eight cores. These results show sub-linear scaling and declining efficiency while runtime continues to improve across the tested range.
+Across the tested range, runtime decreases monotonically with increasing CPU core count, falling from 288 seconds on one core to 85 seconds on eight cores. Correspondingly, the speedup increases monotonically and reaches a maximum of 3.39 on eight cores. Although no hard plateau is reached, the speedup curve shows diminishing returns as additional cores are added, and strong-scaling efficiency declines from 0.76 on two cores to 0.42 on seven and eight cores. As such, increasing the core count effectively reduces runtime, although the measured speedup remains below the ideal linear speedup. Likely sources of this sublinear scaling include serial workflow components, such as routing and diagnostics, as well as process-launch overhead, filesystem I/O contention, and load imbalance arising from differences in the computational requirements of individual GRUs.
 
 ## Recommendation and Reflection
 
