@@ -28,4 +28,4 @@ Scripts use `PYTHON` when set, otherwise `python`. SUMMA scripts use `SUMMA_EXE`
 
 ## Acknowledgements
 
-This repository was developed by Hongli Liu at Montana State University and Tristan Montoya at the University of Saskatchewan with funding support from the Cooperative Institute for [Research to Operations in Hydrology (CIROH)](https://ciroh.ua.edu/).
+This repository was developed by [Hongli Liu](https://h294liu.github.io/) at Montana State University and [Tristan Montoya](https://tjbmontoya.com) at the University of Saskatchewan with funding support from the Cooperative Institute for [Research to Operations in Hydrology (CIROH)](https://ciroh.ua.edu/).
