@@ -57,7 +57,7 @@ route_out_file_prefix="$(read_config_value "${route_control}" "<case_name>")"
 # Check if the attribute file exists before trying to read the GRU count
 require_file "${summa_attribute_file}"
 
-# Count GRUs for the sequential SUMMA loop
+# Count GRUs from the SUMMA attributes
 n_gru="$(ncks -Cm -v gruId -m "${summa_attribute_file}" \
     | awk '$1 == "gru" && $2 == "=" {n = $3} END {if (n != "") print n}')"
 if [ -z "${n_gru}" ]; then
@@ -65,15 +65,13 @@ if [ -z "${n_gru}" ]; then
     exit 1
 fi
 
-# Run SUMMA once for each GRU
+# Run all GRUs in one SUMMA process
 log_step "run summa"
 mkdir -p "${summa_output_path}"
 rm -f "${summa_output_path}/${summa_out_file_prefix}"*
-for gru_index in $(seq 1 "${n_gru}"); do
-    "${summa_exe}" -g "${gru_index}" 1 -r never -m "${summa_filemanager}"
-done
+"${summa_exe}" -m "${summa_filemanager}" -g 1 "${n_gru}" -r never
 
-# Merge split GRU outputs into one file for routing
+# Merge SUMMA outputs into one file for routing
 log_step "concatenate summa outputs"
 "${python_exe}" "${concat_summa_script}" --summa-filemanager "${summa_filemanager}"
 

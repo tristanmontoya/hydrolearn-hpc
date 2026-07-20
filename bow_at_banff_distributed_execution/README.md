@@ -4,7 +4,9 @@ This directory contains the serial SUMMA and mizuRoute example for the distribut
 
 SUMMA uses hourly CAMELS-SPAT ERA5 forcing from `CAN_05BB001_era5_distributed_2002_2009.nc`. The configured run covers `2002-10-01 00:00` through `2005-10-01 23:00` and writes daily outputs. mizuRoute routes daily `averageRoutedRunoff_mean` through the 52-segment network in `model/settings/mizuRoute/topology.nc`.
 
-Diagnostics compare simulated streamflow to observed daily flow over `2003-10-01` through `2005-09-30`, excluding the first water year as spin-up. The bundled result has KGE `0.895340`.
+Diagnostics compare simulated streamflow to observed daily flow over `2003-10-01` through `2005-09-30`, excluding the first water year as spin-up. The bundled result has KGE' `0.895356`.
+
+The case requires `summa.exe`, `mizuRoute.exe`, and NCO; see the top-level `README.md` for tested versions. Assignment instructions are provided in `ASSIGNMENT.md`, while the rubric and sample solution are provided in `RUBRIC.md` and `SOLUTION.md`, respectively.
 
 ## Layout
 
@@ -32,9 +34,9 @@ bow_at_banff_distributed_execution/
 
 `model/shapefiles/` contains GIS inputs used to build the distributed basin and river-network attributes.
 
-`scripts/run_SUMMA_mizuRoute.sh` runs the 52 GRUs serially with SUMMA.
+`scripts/run_SUMMA_mizuRoute.sh` runs all 52 GRUs in one serial SUMMA process.
 
-## Serial execution
+## Serial Execution
 
 Run the model from this directory:
 

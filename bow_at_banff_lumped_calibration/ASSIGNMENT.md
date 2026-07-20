@@ -12,19 +12,19 @@ The figure below illustrates the serial calibration pattern: OSTRICH proposes on
 
 ![Illustration of a typical serial lumped hydrologic model calibration workflow.](../figures/calibration_lumped.png)
 
-Conceptually, the calibration problem is to find the calibration vector $\boldsymbol{\theta}^*$ that maximizes agreement between simulated and observed streamflow:
+Conceptually, the calibration problem is to find the calibration vector $\boldsymbol{\theta}^*$ that maximizes agreement between simulated and observed streamflow. More precisely, we seek a parameter vector $\boldsymbol{\theta}^*$ that maximizes the modified Kling–Gupta efficiency (KGE') between the simulated streamflow $\mathbf{q}_s(\boldsymbol{\theta})$ and the observed streamflow $\mathbf{q}_o$ over the calibration period:
 
 $$
 \boldsymbol{\theta}^* = \arg\max_{\boldsymbol{\theta} \in \boldsymbol{\Theta}}\, \mathrm{KGE}^{\prime}\!\left(\mathbf{q}_s(\boldsymbol{\theta}), \mathbf{q}_o\right).
 $$
 
-Here, $\boldsymbol{\theta}$ is the vector of parameter multipliers, $\boldsymbol{\Theta} \subset \mathbb{R}^d$ is the bounded parameter domain defined by the lower and upper limits specified in `ostIn.txt`, $d$ is the number of parameters being calibrated, $\mathbf{q}_s(\boldsymbol{\theta})$ is the simulated streamflow produced by SUMMA for that parameter vector, and $\mathbf{q}_o$ is the observed streamflow over the calibration period. This workflow uses the modified Kling-Gupta efficiency $\mathrm{KGE}^{\prime}$ ([Kling et al., 2012](https://doi.org/10.1016/j.jhydrol.2012.01.011)), which is defined in terms of the correlation $r = \mathrm{corr}(\mathbf{q}_s, \mathbf{q}_o)$, coefficient-of-variation ratio $\gamma = (\sigma_s / \mu_s) / (\sigma_o / \mu_o)$, and mean bias ratio $\beta = \mu_s / \mu_o$. Here, $\mu_s$ and $\mu_o$ are the simulated and observed means, and $\sigma_s$ and $\sigma_o$ are the corresponding standard deviations. The resulting metric is
+Here, $\boldsymbol{\theta}$ is the vector of parameter multipliers, $\boldsymbol{\Theta} \subset \mathbb{R}^d$ is the bounded parameter domain defined by the lower and upper limits specified in `ostIn.txt`, $d$ is the number of parameters being calibrated, and KGE' ([Kling et al., 2012](https://doi.org/10.1016/j.jhydrol.2012.01.011)) is defined as
 
 $$
 \mathrm{KGE}^{\prime} = 1 - \sqrt{(r - 1)^2 + (\gamma - 1)^2 + (\beta - 1)^2}.
 $$
 
-Larger modified KGE values indicate better agreement between simulated and observed streamflow.
+In this expression, $r = \mathrm{corr}(\mathbf{q}_s, \mathbf{q}_o)$ is the correlation, $\gamma = (\sigma_s / \mu_s) / (\sigma_o / \mu_o)$ is the coefficient-of-variation ratio, and $\beta = \mu_s / \mu_o$ is the mean bias ratio, where $\mu_s$ and $\mu_o$ are the simulated and observed means, and $\sigma_s$ and $\sigma_o$ are the corresponding standard deviations. Larger KGE' values indicate better agreement between simulated and observed streamflow.
 
 If you are using the [`vhpc-hydrotools` virtual cluster](https://github.com/tristanmontoya/vhpc-hydrotools), change into the repository checkout:
 
@@ -54,7 +54,7 @@ scripts/run_trial.sh
 scripts/save_best.sh
 ```
 
-The file `ostIn.txt` defines the OSTRICH calibration workflow, which currently uses `ProgramType DDS`, meaning that the serial dynamically dimensioned search algorithm is used. The `ModelExecutable` line points to `scripts/run_trial.sh`, which runs the SUMMA model and writes the modified KGE value to `results/KGE.txt`. The diagnostics compare daily streamflow from October 1, 2003, through September 30, 2005. OSTRICH formulates optimization problems as minimization problems, so `ostIn.txt` defines the negative of modified KGE as the cost function and minimizes that value. This is equivalent to maximizing modified KGE. The `PreserveBestModel` line points to `scripts/save_best.sh`, which copies the best trial parameter file and simulation output to the `output_archive/` directory.
+The file `ostIn.txt` defines the OSTRICH calibration workflow, which currently uses `ProgramType DDS`, meaning that the serial dynamically dimensioned search algorithm is used. The `ModelExecutable` line points to `scripts/run_trial.sh`, which runs the SUMMA model and writes the KGE' value to `results/KGE.txt`. The diagnostics compare daily streamflow from October 1, 2003, through September 30, 2005. OSTRICH formulates optimization problems as minimization problems, so `ostIn.txt` defines the negative of KGE' as the cost function and minimizes that value. This is equivalent to maximizing KGE'. The `PreserveBestModel` line points to `scripts/save_best.sh`, which copies the best trial parameter file and simulation output to the `output_archive/` directory.
 
 The `scripts/run_ostrich.sh` shell script runs the entire workflow. It launches the serial `ostrich` executable, which reads the `ostIn.txt` file and performs the calibration:
 
@@ -65,7 +65,7 @@ set -euo pipefail
 ostrich
 ```
 
-Your goal is to first run the unchanged serial calibration through Slurm, then modify the optimizer and launch the parallel calibration with Slurm and MPI. At this stage, focus on the structure of the serial workflow: OSTRICH chooses a candidate parameter set, `run_trial.sh` evaluates that candidate by running SUMMA and calculating modified KGE, and OSTRICH uses the result to choose the next candidate.
+Your goal is to first run the unchanged serial calibration through Slurm, then modify the optimizer and launch the parallel calibration with Slurm and MPI. At this stage, focus on the structure of the serial workflow: OSTRICH chooses a candidate parameter set, `run_trial.sh` evaluates that candidate by running SUMMA and calculating KGE', and OSTRICH uses the result to choose the next candidate.
 
 Before changing the optimizer, run the serial workflow as a scheduled Slurm job. Do not run the calibration directly on the login or head node, because even the serial calibration consumes shared resources for an extended period. Open `scripts/run_ostrich.sh` and modify it so that it remains a serial OSTRICH run, but is submitted through Slurm:
 
@@ -112,7 +112,7 @@ ls output_archive
 
 OSTRICH includes a parallel version of the DDS algorithm, which evaluates multiple candidate parameter sets at the same time. The parallel DDS algorithm uses MPI to distribute the model evaluations across multiple worker ranks. Each worker rank runs a separate instance of the SUMMA model with a different candidate parameter set, and the results are sent back to the coordinator rank, which manages the optimization process. We will now modify the serial workflow to use the parallel DDS algorithm.
 
-The figure below illustrates the asynchronous parallel DDS workflow used in this exercise. The coordinator dispatches candidate parameter sets to available workers, and each worker independently executes `scripts/run_trial.sh` to run the lumped SUMMA model and calculate modified KGE. When a worker completes an evaluation, the coordinator incorporates the returned objective function value into the search and, if the evaluation budget is not exhausted, dispatches a new candidate to that worker without waiting for the other workers to finish their current evaluations:
+The figure below illustrates the asynchronous parallel DDS workflow used in this exercise. The coordinator dispatches candidate parameter sets to available workers, and each worker independently executes `scripts/run_trial.sh` to run the lumped SUMMA model and calculate KGE'. When a worker completes an evaluation, the coordinator incorporates the returned objective function value into the search and, if the evaluation budget is not exhausted, dispatches a new candidate to that worker without waiting for the other workers to finish their current evaluations:
 
 ![Illustration of a typical asynchronous parallel hydrologic model calibration workflow.](../figures/calibration_lumped_async.png)
 
@@ -265,7 +265,7 @@ The `.0` suffix selects the `OstrichMPI` job step. Based on the Slurm accounting
 - Slurm job ID
 - Total MPI tasks
 - Number of model-evaluation workers
-- Best modified KGE value from the `output_archive/KGE.txt` file
+- Best KGE' value from the `output_archive/KGE.txt` file
 - Wall-clock runtime from the Slurm accounting output
 - Speedup relative to the one-worker case
 - Parallel efficiency

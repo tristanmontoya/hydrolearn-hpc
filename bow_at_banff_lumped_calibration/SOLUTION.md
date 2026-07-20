@@ -2,6 +2,8 @@
 
 This memo summarizes the conversion of the Bow River at Banff lumped SUMMA calibration workflow from a serial dynamically dimensioned search (DDS) optimization workflow using OSTRICH to a Slurm and MPI workflow using the parallel DDS algorithm.
 
+The results reported in this memo were obtained on the [`vhpc-hydrotools`](https://github.com/tristanmontoya/vhpc-hydrotools) virtual HPC cluster.
+
 ## Serial Workflow
 
 The original workflow uses the serial DDS algorithm. In each iteration, OSTRICH proposes one candidate parameter set, `scripts/run_trial.sh` applies its parameter multipliers, SUMMA simulates streamflow, and the diagnostics script calculates the modified Kling-Gupta efficiency (KGE') over the aligned daily period from October 1, 2003, through September 30, 2005. OSTRICH uses the value written to `results/KGE.txt` to guide the search.
