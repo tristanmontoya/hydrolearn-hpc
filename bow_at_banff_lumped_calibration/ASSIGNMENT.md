@@ -183,9 +183,7 @@ sinfo -N -o "%N %P %c %t"
 
 The `-N` option prints one line per node. The `-o` option selects the output columns: `%N` is the node name, `%P` is the partition name, `%c` is the number of CPUs on the node, and `%t` is the node state. Use this information to choose the largest feasible number of MPI tasks for your allocation.
 
-The parallel DDS algorithm uses one coordinator MPI rank in addition to the model-evaluation worker ranks. Therefore, a run with $p$ workers needs $p + 1$ total MPI tasks. The script below uses all tasks allocated by Slurm for the job.
-
-The launch script below is configured for the `vhpc-hydrotools` virtual cluster. It requests 8 total tasks (`--ntasks=8`) by default, which corresponds to seven model-evaluation workers plus one coordinator. In the scaling study below, you will override `--ntasks` when submitting each job. If you are using another Slurm cluster, adapt `--ntasks` and `--time` to fit your allocation and the largest worker count you plan to test.
+The parallel DDS algorithm uses one coordinator MPI rank in addition to the model-evaluation worker ranks. Therefore, a run with $p$ workers needs $p + 1$ total MPI tasks. The script below is configured for the `vhpc-hydrotools` virtual cluster. It requests 8 total tasks (`--ntasks=8`) by default, which corresponds to seven model-evaluation workers plus one coordinator. In the scaling study that follows, you will override `--ntasks` when submitting each job. If you are using another Slurm cluster, adapt `--ntasks` and `--time` to fit your allocation and the largest worker count you plan to test:
 
 ```bash
 #!/usr/bin/env bash
