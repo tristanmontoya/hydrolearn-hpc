@@ -2,11 +2,11 @@
 
 This memo summarizes the conversion of the distributed SUMMA-mizuRoute simulation from serial execution to a parallel workflow that uses multiple CPU cores on a Slurm-managed cluster.
 
-The results reported in this memo were obtained on the [`vhpc-hydrotools`](https://github.com/tristanmontoya/vhpc-hydrotools) virtual HPC cluster.
+The results reported in this memo were obtained on the [`vhpc-hydrotools`](https://github.com/tristanmontoya/vhpc-hydrotools) virtual HPC cluster, hosted on a MacBook Air M4 with 10 physical CPU cores.
 
 ## Serial Workflow
 
-The serial workflow executes the distributed SUMMA model over the 52 grouped response units (GRUs) representing the Bow River basin. One SUMMA process simulates the full domain using `-g 1 52`. For each GRU, SUMMA performs an independent land-surface simulation that generates runoff and other hydrologic fluxes. After all GRUs have been simulated, mizuRoute routes the generated runoff through the river network to the Banff streamflow gauge, where simulated streamflow is compared with observations to compute the modified Kling–Gupta efficiency (KGE').
+The serial workflow executes the distributed SUMMA model over the 52 grouped response units (GRUs) representing the Bow River basin. One SUMMA process simulates the full domain using `-g 1 52`. For each GRU, SUMMA performs an independent land-surface simulation that generates runoff and other hydrologic fluxes. After all GRUs have been simulated, mizuRoute routes the generated runoff through the river network to the Banff streamflow gauge, where simulated streamflow is compared with observations to compute the modified Kling-Gupta efficiency (KGE').
 
 Although the watershed is spatially distributed, the baseline is entirely serial because one SUMMA process handles all 52 GRUs using one requested CPU core.
 
@@ -44,7 +44,7 @@ to the following:
 
 Both files must be modified because they perform different roles. The workflow script determines how many SUMMA processes are launched, whereas the Slurm submission script reserves sufficient CPU cores for those processes. Changing only one of the two files would either leave CPU cores unused or oversubscribe the allocated resources.
 
-The 52 GRUs should be divided as evenly as possible among CPU cores to minimize load imbalance. Example decompositions include 26–26 GRUs for two cores, 17–17–18 for three cores, 13 GRUs each for four cores, and approximately 6–7 GRUs per core for eight cores.
+The 52 GRUs should be divided as evenly as possible among CPU cores to minimize load imbalance. Example decompositions include 26–26 GRUs for two cores, 17–17–18 for three cores, 13 GRUs each for four cores, and approximately 6–7 GRUs per core for eight cores. For this study, we selected $p_{\max}=8$ because the virtual cluster provided eight virtual CPU cores, the host machine provided 10 physical CPU cores, and the domain contained more than eight GRUs. The KGE' value was 0.895356 for every core count, matching the one-core result.
 
 ## Performance Evaluation
 
@@ -55,7 +55,7 @@ S_p(N)=\frac{T_1(N)}{T_p(N)}, \qquad
 E_p(N)=\frac{S_p(N)}{p}
 $$
 
-where $T_1$ is the one-core runtime and $p$ is the number of requested CPU cores. The results are summarized in the table below:
+where $T_1(N)$ is the one-core runtime, $T_p(N)$ is the runtime using $p$ cores, and $p$ is the number of requested CPU cores. The results are summarized in the table below:
 
 | Slurm Job ID | Requested CPU Cores | Runtime (s) | Speedup | Strong-Scaling Efficiency |
 | ---: | ---: | ---: | ---: | ---: |
@@ -85,11 +85,11 @@ The following figure plots the runtime, speedup, and strong-scaling efficiency a
 
 <img src="../figures/speedup_scaling_results.png" width="70%">
 
-Across the tested range, runtime decreases monotonically with increasing CPU core count, falling from 288 seconds on one core to 85 seconds on eight cores. Correspondingly, the speedup increases monotonically and reaches a maximum of 3.39 on eight cores. Although no hard plateau is reached, the speedup curve shows diminishing returns as additional cores are added, and strong-scaling efficiency declines from 0.76 on two cores to 0.42 on seven and eight cores. As such, increasing the core count effectively reduces runtime, although the measured speedup remains below the ideal linear speedup. Likely sources of this sublinear scaling include serial workflow components, such as routing and diagnostics, as well as process-launch overhead, filesystem I/O contention, and load imbalance arising from differences in the computational requirements of individual GRUs.
+Across the tested range, runtime decreases monotonically with increasing CPU core count, falling from 288 seconds on one core to 85 seconds on eight cores. Correspondingly, the speedup increases monotonically and reaches a maximum of 3.39 on eight cores. Although no hard plateau is reached, the speedup curve shows diminishing returns as additional cores are added, and strong-scaling efficiency declines from 0.76 on two cores to 0.42 on seven and eight cores. As such, increasing the core count effectively reduces runtime, although the measured speedup remains below the ideal linear speedup. Likely sources of this sublinear scaling include serial workflow components, such as routing and diagnostics, as well as process launch overhead, file system I/O contention, and load imbalance arising from differences in the computational requirements of individual GRUs.
 
 ## Recommendation and Reflection
 
-Parallelizing distributed hydrologic simulations substantially reduces model turnaround time and enables research groups to perform more calibration experiments, sensitivity analyses, uncertainty studies, and scenario simulations within a fixed amount of time. The results show that the Bow River basin workflow continues to benefit from additional CPU resources up to eight cores, although the gains diminish as more cores are added.
+Parallelizing distributed hydrologic simulations substantially reduces model turnaround time and enables research groups to perform more calibration experiments, sensitivity analyses, uncertainty studies, and scenario simulations within a fixed amount of time, and to explore more complex model configurations that would otherwise be infeasible. The results show that the Bow River basin workflow continues to benefit from additional CPU resources up to the tested maximum of eight cores, although the gains diminish as more cores are added.
 
 Scaling studies such as this one provide a practical basis for selecting CPU allocations for production runs, and researchers should weigh marginal runtime reductions against declining strong-scaling efficiency rather than automatically requesting the maximum number of available cores. In this study, eight cores minimize runtime, whereas smaller allocations use CPU resources more efficiently. The appropriate allocation therefore depends on the objective: for the present study, eight cores are appropriate when a single result is needed as quickly as possible, while calibration, sensitivity analysis, or uncertainty quantification may benefit from smaller allocations that allow more concurrent simulations at higher strong-scaling efficiency, provided that each simulation uses isolated working directories.
 

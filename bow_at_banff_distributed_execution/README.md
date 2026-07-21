@@ -32,7 +32,7 @@ bow_at_banff_distributed_execution/
 
 `model/settings/mizuRoute/` contains `mizuRoute.control`, `topology.nc`, and `param.nml.default`.
 
-`model/shapefiles/` contains GIS inputs used to build the distributed basin and river-network attributes.
+`model/shapefiles/` contains GIS inputs used to build the distributed basin and river network attributes.
 
 `scripts/run_SUMMA_mizuRoute.sh` runs all 52 GRUs in one serial SUMMA process.
 

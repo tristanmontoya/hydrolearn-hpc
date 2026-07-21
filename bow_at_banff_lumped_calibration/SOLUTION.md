@@ -2,7 +2,7 @@
 
 This memo summarizes the conversion of the Bow River at Banff lumped SUMMA calibration workflow from a serial dynamically dimensioned search (DDS) optimization workflow using OSTRICH to a Slurm and MPI workflow using the parallel DDS algorithm.
 
-The results reported in this memo were obtained on the [`vhpc-hydrotools`](https://github.com/tristanmontoya/vhpc-hydrotools) virtual HPC cluster.
+The results reported in this memo were obtained on the [`vhpc-hydrotools`](https://github.com/tristanmontoya/vhpc-hydrotools) virtual HPC cluster, hosted on a MacBook Air M4 with 10 physical CPU cores.
 
 ## Serial Workflow
 
@@ -22,13 +22,13 @@ Keeping `RandomSeed 721734144` and `MaxIterations 40` fixed does not guarantee t
 
 ## Performance Evaluation
 
-We use the one-worker parallel DDS run as the scaling baseline so that every case uses the same optimizer and MPI launch pathway. This is an instructional worker-scaling comparison with a fixed 40-evaluation optimization budget, not strict strong scaling of an identical computational workload, because the asynchronous searches can evaluate different parameter sets with different execution costs. The speedup and efficiency are
+We use the one-worker parallel DDS run as the scaling baseline so that every case uses the same optimizer and MPI launch pathway. This is an instructional comparison with a fixed 40-evaluation optimization budget, not strict strong scaling of an identical computational workload, because the asynchronous searches can evaluate different parameter sets with different execution costs. The speedup and efficiency are
 
 $$
 S_p(N)=\frac{T_1(N)}{T_p(N)}, \qquad E_p(N)=\frac{S_p(N)}{p},
 $$
 
-where $p$ is the number of model-evaluation workers and $T_1=1350\ \mathrm{s}$, corresponding to the one-worker case. The results are summarized in the following table:
+where $p$ is the number of model-evaluation workers and $T_1(N)=1350\ \mathrm{s}$, corresponding to the one-worker case. The results are summarized in the following table:
 
 | Slurm Job ID | Total MPI Tasks | Model-Evaluation Workers | Best KGE' | Runtime (s) | Speedup | Parallel Efficiency |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -42,17 +42,17 @@ where $p$ is the number of model-evaluation workers and $T_1=1350\ \mathrm{s}$, 
 
 Adding model-evaluation workers substantially improves runtime through the four-worker case. Runtime decreases from 1350 seconds with one worker to 244 seconds with four workers, corresponding to a measured speedup of 5.53.
 
-The measured speedup is not consistently close to an ideal linear speedup. The three-worker case achieves a speedup of 2.78 compared with an ideal value of 3, whereas the seven-worker case achieves a speedup of 5.00 compared with an ideal value of 7. The apparent efficiencies above one in the two- and four-worker cases should not be interpreted as conclusive evidence of superlinear scaling. One possible explanation is that the evaluated parameter sets can have different model-execution costs.
+The measured speedup is not consistently close to an ideal linear speedup. The three-worker case achieves a speedup of 2.78 compared with an ideal value of 3, whereas the seven-worker case achieves a speedup of 5.00 compared with an ideal value of 7. The apparent efficiencies above one in the two- and four-worker cases should not be interpreted as conclusive evidence of superlinear scaling. One possible explanation is that the evaluated parameter sets can have different model execution costs.
 
-Several factors limit parallel efficiency in this workflow. In OSTRICH, the coordinator performs serial search-management work that can delay the dispatch of new candidates to workers. The coordinator also performs serial work at the end of the search, including rerunning the best parameter set to generate model output for archiving. Furthermore, launching MPI ranks and staging worker directories adds overhead, and concurrent workers contend for CPU and file-system resources while reading and writing NetCDF files and diagnostics. Workers left idle due to load imbalance also reduce efficiency; even for an asynchronous algorithm, this can occur at the end of the search when there are fewer remaining candidates than workers, or when workers evaluate parameter sets with different execution costs. Finally, a fixed optimization budget of 40 evaluations provides progressively fewer evaluations per worker as the worker count increases.
+Several factors limit parallel efficiency in this workflow. In OSTRICH, the coordinator performs serial search management work that can delay the dispatch of new candidates to workers. The coordinator also performs serial work at the end of the search, including rerunning the best parameter set to generate model output for archiving. Furthermore, launching MPI ranks and staging worker directories adds overhead, and concurrent workers contend for CPU and file system resources while reading and writing NetCDF files and diagnostics. Workers left idle due to load imbalance also reduce efficiency; even for an asynchronous algorithm, this can occur at the end of the search when there are fewer remaining candidates than workers, or when workers evaluate parameter sets with different execution costs. Finally, a fixed optimization budget of 40 evaluations provides progressively fewer evaluations per worker as the worker count increases.
 
 For these measurements, the practical saturation point appears to be four model-evaluation workers, or five total MPI tasks. The five-, six-, and seven-worker cases take 264, 254, and 270 seconds, respectively, compared with 244 seconds for four workers. Beyond four workers, additional overhead, resource contention, and load imbalance outweigh the benefit of distributing evaluations among more workers.
 
 ## Recommendation and Reflection
 
-Parallelizing the calibration workflow is valuable because it increases model-evaluation throughput and shortens the turnaround time for calibration experiments. The present scaling cases each retain the same 40-evaluation optimization budget, but completing those evaluations sooner allows the group to run more independent calibrations, sensitivity studies, or model-structure experiments in a fixed amount of time.
+Parallelizing the calibration workflow is valuable because it increases model evaluation throughput and shortens the turnaround time for calibration experiments. The scaling cases retain the same 40-evaluation optimization budget, but completing those evaluations sooner allows the group to run more independent calibrations, sensitivity studies, or other scenario analyses within a fixed time. Faster calibration also makes more complex models, larger watersheds, longer calibration periods, and larger parameter searches practical, which can improve the quality of the calibrated model.
 
-Each worker count should be a separate Slurm job because this gives every case an explicit resource request, its own job ID and accounting record, and an isolated archive. A single allocation sized for the largest case would leave resources idle during smaller cases and obscure per-case elapsed times.
+Each worker count should be given a separate Slurm job because this gives every case an explicit resource request, its own job ID and accounting record, and an isolated archive. A single allocation sized for the largest case would leave resources idle during smaller cases and obscure per-case elapsed times.
 
 Varying the number of model-evaluation workers results in different objective function values because the asynchronous parallel DDS algorithm's candidate generation depends on the results available when a worker becomes free. Since the 40-evaluation optimization budget remains fixed, it is not guaranteed that adding workers will improve the best candidate found. The best KGE' values in this study range from 0.147019 to 0.591202 across the seven scaling cases. The highest KGE' is 0.591202 from the five-worker run, but this does not establish five workers as statistically better for calibration quality. Multiple calibrations with independent random seeds would be required to compare solution quality for different worker counts.
 

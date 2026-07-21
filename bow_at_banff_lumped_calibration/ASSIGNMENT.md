@@ -12,7 +12,7 @@ The figure below illustrates the serial calibration pattern: OSTRICH proposes on
 
 ![Illustration of a typical serial lumped hydrologic model calibration workflow.](../figures/calibration_lumped.png)
 
-Conceptually, the calibration problem is to find the calibration vector $\boldsymbol{\theta}^*$ that maximizes agreement between simulated and observed streamflow. More precisely, we seek a parameter vector $\boldsymbol{\theta}^*$ that maximizes the modified Kling–Gupta efficiency (KGE') between the simulated streamflow $\mathbf{q}_s(\boldsymbol{\theta})$ and the observed streamflow $\mathbf{q}_o$ over the calibration period:
+Conceptually, the calibration problem is to find the calibration vector $\boldsymbol{\theta}^*$ that maximizes agreement between simulated and observed streamflow. More precisely, we seek a parameter vector $\boldsymbol{\theta}^*$ that maximizes the modified Kling-Gupta efficiency (KGE') between the simulated streamflow $\mathbf{q}_s(\boldsymbol{\theta})$ and the observed streamflow $\mathbf{q}_o$ over the calibration period:
 
 $$
 \boldsymbol{\theta}^* = \arg\max_{\boldsymbol{\theta} \in \boldsymbol{\Theta}}\, \mathrm{KGE}^{\prime}\!\left(\mathbf{q}_s(\boldsymbol{\theta}), \mathbf{q}_o\right).
@@ -88,7 +88,7 @@ The `#SBATCH` lines request one Slurm task for the serial calibration. Submit th
 sbatch scripts/run_ostrich.sh
 ```
 
-Slurm will print a line such as `Submitted batch job 123456`. Replace `123456` with your job ID when checking the queue:
+Slurm will print a line such as `Submitted batch job 123456`. Then use `squeue` to monitor the job status:
 
 ```sh
 squeue -u "$USER" --Format=JobID,Name,StateCompact:4,TimeUsed:8,NumTasks:8,NodeList
@@ -183,7 +183,7 @@ sinfo -N -o "%N %P %c %t"
 
 The `-N` option prints one line per node. The `-o` option selects the output columns: `%N` is the node name, `%P` is the partition name, `%c` is the number of CPUs on the node, and `%t` is the node state. Use this information to choose the largest feasible number of MPI tasks for your allocation.
 
-The parallel DDS algorithm uses one coordinator MPI rank in addition to the model-evaluation worker ranks. Therefore, a run with $p$ workers needs $p + 1$ total MPI tasks. The script below uses all tasks allocated by Slurm for the job. In your results table, compute the number of model-evaluation workers as `NTasks - 1` from the Slurm accounting output.
+The parallel DDS algorithm uses one coordinator MPI rank in addition to the model-evaluation worker ranks. Therefore, a run with $p$ workers needs $p + 1$ total MPI tasks. The script below uses all tasks allocated by Slurm for the job.
 
 The launch script below is configured for the `vhpc-hydrotools` virtual cluster. It requests 8 total tasks (`--ntasks=8`) by default, which corresponds to seven model-evaluation workers plus one coordinator. In the scaling study below, you will override `--ntasks` when submitting each job. If you are using another Slurm cluster, adapt `--ntasks` and `--time` to fit your allocation and the largest worker count you plan to test.
 
@@ -240,7 +240,7 @@ for ntasks in {2..8}; do
 done
 ```
 
-For each of these `sbatch` commands, Slurm will print a line such as `Submitted batch job 123456`, with a different job ID for each submitted job. Replace `123456` with the corresponding job ID when checking the queue:
+For each of these `sbatch` commands, Slurm will print a line such as `Submitted batch job 123456`, with a different job ID for each submitted job. Then use `squeue` to monitor the job status:
 
 ```sh
 squeue -u "$USER" --Format=JobID,Name,StateCompact:4,TimeUsed:8,NumTasks:8,NodeList
@@ -254,7 +254,7 @@ cat scaling_archive_123456/output_archive/KGE.txt
 ls scaling_archive_123456/output_archive
 ```
 
-Then record the total task count and runtime for each completed job, using Slurm accounting output:
+Then run `sacct` for each completed job, replacing `123456` with the corresponding job ID:
 
 ```sh
 sacct -j 123456.0 --format=JobID,NTasks,Elapsed
@@ -264,9 +264,9 @@ The `.0` suffix selects the `OstrichMPI` job step. Based on the Slurm accounting
 
 - Slurm job ID
 - Total MPI tasks
-- Number of model-evaluation workers
+- Number of model-evaluation workers (`NTasks - 1`)
 - Best KGE' value from the `output_archive/KGE.txt` file
-- Wall-clock runtime from the Slurm accounting output
+- Wall-clock runtime (`Elapsed`)
 - Speedup relative to the one-worker case
 - Parallel efficiency
 
