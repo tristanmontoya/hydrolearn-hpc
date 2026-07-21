@@ -6,7 +6,7 @@ This scenario focuses on a distributed SUMMA-mizuRoute workflow for the watershe
 
 The supplied workflow executes all GRUs serially in one SUMMA process. You will run this baseline model, modify the SUMMA portion to execute GRU batches concurrently, and evaluate how runtime and efficiency change as CPU cores are added.
 
-The comparison between simulated and observed streamflow at the Banff gauge uses the modified Kling-Gupta efficiency (KGE') from [Kling et al. (2012)](https://doi.org/10.1016/j.jhydrol.2012.01.011) over the daily evaluation period from October 1, 2003, through September 30, 2005. The `scripts/calculate_run_diagnostics.py` diagnostic script computes:
+The comparison between simulated and observed streamflow at the Banff gauge in `scripts/calculate_run_diagnostics.py` computes the modified Kling-Gupta efficiency (KGE') over the daily evaluation period from October 1, 2003, through September 30, 2005 as
 
 $$
 \mathrm{KGE}^{\prime} = 1 - \sqrt{(r - 1)^2 + (\gamma - 1)^2 + (\beta - 1)^2}.
@@ -16,7 +16,7 @@ Here, $r$ is the correlation between simulated and observed streamflow, $\gamma=
 
 ## 1. Serial Workflow
 
-If you are using the [`vhpc-hydrotools` virtual cluster](https://github.com/tristanmontoya/vhpc-hydrotools), change into the repository checkout:
+If you are using the [`vhpc-hydrotools` virtual cluster](https://github.com/tristanmontoya/vhpc-hydrotools), change into the `hydrolearn-hpc` repository checkout:
 
 ```sh
 cd /workspace/hydrolearn-hpc
@@ -37,7 +37,7 @@ cd bow_at_banff_distributed_execution
 
 Before editing anything, inspect the structure of the serial workflow. The workflow script executes SUMMA and mizuRoute, whereas the submission script requests computing resources from Slurm. Inspect the following files:
 
-```
+```text
 scripts/run_SUMMA_mizuRoute.sh
 scripts/submit_run.sh
 ```
@@ -56,7 +56,7 @@ Submit the baseline serial model run through Slurm:
 sbatch scripts/submit_run.sh
 ```
 
-Slurm will print a line such as `Submitted batch job 123456`. Record the job ID for the performance evaluation in Section 3. Use `squeue` to monitor the job status:
+Slurm will print a line such as `Submitted batch job 123456`. Record the job ID for the performance evaluation in Section 3. You can use `squeue` to monitor the job status, for example, with the following command:
 
 ```sh
 squeue -u "$USER" --Format=JobID,Name,StateCompact:4,TimeUsed:8,CPUsPerTask:12,NodeList
@@ -96,7 +96,7 @@ The `-N` option prints one line per node. The `-o` option selects the output col
 
 ### 2.2 Modify the Workflow
 
-Convert the workflow to execute two GRU batches concurrently by replacing the full-domain SUMMA call with two background processes, each executing half of the GRUs. Locate the serial SUMMA call in `scripts/run_SUMMA_mizuRoute.sh`:
+Convert the workflow to execute two GRU batches concurrently by replacing the full-domain SUMMA call with two background processes, each executing half of the GRUs. To do this, first locate the serial SUMMA call in `scripts/run_SUMMA_mizuRoute.sh`:
 
 ```bash
 "${summa_exe}" -m "${summa_filemanager}" -g 1 "${n_gru}" -r never
@@ -112,7 +112,7 @@ srun --ntasks=1 --exclusive \
 wait
 ```
 
-Each `srun` command creates one Slurm job step within the job allocation, and the `&` operator runs that step in the background. The `wait` command prevents the workflow from proceeding to mizuRoute until both SUMMA job steps finish. The `--ntasks=1` argument ensures that each job step launches one SUMMA process instead of inheriting the job-level task count set in the Slurm submission script. The `--exclusive` option assigns distinct CPU resources to concurrent job steps so that they do not compete for CPU cores.
+Each `srun` command creates one Slurm job step within the job allocation, and the `&` operator runs that step in the background. The `wait` command prevents the workflow from proceeding to mizuRoute until both SUMMA job steps finish. The `--ntasks=1` argument ensures that each job step launches one SUMMA process instead of inheriting the job-level task count set in the Slurm submission script. The `--exclusive` option limits each job step to the CPU resources requested for that step, preventing concurrent steps from using the same CPU cores.
 
 ### 2.3 Modify the Slurm Submission Script
 
@@ -130,7 +130,7 @@ to the following:
 #SBATCH --cpus-per-task=1
 ```
 
-The `--ntasks` value should match the number of concurrent SUMMA job steps, while `--cpus-per-task` should remain 1 because each SUMMA process is single-threaded. Submit the two-core job:
+The `--ntasks` value should match the number of concurrent SUMMA job steps, while `--cpus-per-task` should remain 1 because each individual SUMMA process is single-threaded. Submit the two-core job:
 
 ```sh
 sbatch scripts/submit_run.sh
@@ -140,11 +140,11 @@ Record the job ID for the performance evaluation in Section 3. This two-core run
 
 ### 2.4 Additional CPU Core Counts
 
-Choose and briefly justify a maximum CPU core count, $p_{\max}$, for your scaling study. The selected value must be at least 3 and must not exceed either 52, the number of GRUs used in this case, or the maximum number of CPU cores that Slurm can allocate to the workflow. If you are using the `vhpc-hydrotools` virtual cluster, $p_{\max}$ must also not exceed the smaller of 8 (the number of virtual CPU cores provided by the cluster) and the number of physical CPU cores on the host machine.
+Choose and briefly justify a maximum CPU core count, $p_{\max}$, for your scaling study. The selected value must not exceed either the total number of GRUs (in this case, 52) or the maximum number of CPU cores that Slurm can allocate to the workflow. On the `vhpc-hydrotools` virtual cluster, there are eight virtual CPU cores available (two nodes with four cores each), making $p_{\max}=8$ a reasonable choice unless this exceeds the number of physical CPU cores on your host machine, in which case you should choose the smaller of the two values.
 
-Including the completed serial and two-core runs, test every integer CPU core count from 1 through $p_{\max}$. For each additional core count, divide the 52 GRUs into approximately balanced batches, set `--ntasks` equal to the number of background SUMMA job steps, and keep `--cpus-per-task=1`. Before submitting each configuration, confirm that the GRU ranges cover GRUs 1 through 52 exactly once, without gaps or overlaps.
+Including the completed serial and two-core runs, rerun the workflow for every integer CPU core count from 1 through $p_{\max}$. For each additional core count, divide the 52 GRUs into approximately balanced batches, set the `#SBATCH --ntasks` value at the top of `scripts/submit_run.sh` to equal the number of background SUMMA job steps, and keep `--cpus-per-task=1`. Before submitting each configuration, confirm that the GRU ranges cover GRUs 1 through 52 exactly once, without gaps or overlaps.
 
-Run only one configuration at a time because each run writes to the same case directory. After each run, record the Slurm job ID and confirm that the KGE' value in `results/KGE.txt` matches the one-core result before continuing.
+Make sure to run only one configuration at a time, because each run writes to the same case directory. After each run, record the Slurm job ID and confirm that the KGE' value in `results/KGE.txt` matches the one-core result before continuing.
 
 **Deliverable:** the *Parallelization* section of your memo must address the following questions:
 
@@ -161,7 +161,7 @@ Once all runs are complete, run `sacct` for each recorded job ID, replacing `123
 sacct -j 123456 --format=JobID,ReqCPUS,Elapsed
 ```
 
-For each job, use the top-level row in the `sacct` output, not the `.batch` or `.extern` rows. Create a table with these columns:
+For each job, use the top-level row in the `sacct` output and create a table with the following columns:
 
 - Slurm job ID
 - Requested CPU cores (`ReqCPUS`)
@@ -169,12 +169,12 @@ For each job, use the top-level row in the `sacct` output, not the `.batch` or `
 - Speedup relative to the one-core case
 - Strong-scaling efficiency with respect to CPU cores
 
-Use the following formulas to compute the speedup and strong-scaling efficiency:
+Use the formulas below to compute the speedup and strong-scaling efficiency:
 
 - Speedup relative to the one-core case: $S_p(N) = T_1(N) / T_p(N)$
 - Strong-scaling efficiency with respect to CPU cores: $E_p(N) = S_p(N) / p$
 
-Following the notation from Section 1.3 of this module, $N$ represents the fixed distributed simulation workload, $p$ is the requested number of CPU cores from the `ReqCPUS` field in the top-level Slurm accounting row, $T_1(N)$ is the one-core runtime, and $T_p(N)$ is the runtime using $p$ cores.
+Following the notation introduced in Section 1.3 of this module, $N$ represents the fixed distributed simulation workload, $p$ is the requested number of CPU cores, corresponding to the `ReqCPUS` field in the top-level Slurm accounting row, $T_1(N)$ is the serial runtime, and $T_p(N)$ is the runtime using $p$ cores.
 
 **Deliverable:** the *Performance Evaluation* section of your memo must include the completed strong-scaling table and address the following questions:
 

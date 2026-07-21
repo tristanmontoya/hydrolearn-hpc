@@ -8,9 +8,7 @@ The results reported in this memo were obtained on the [`vhpc-hydrotools`](https
 
 The serial workflow executes the distributed SUMMA model over the 52 grouped response units (GRUs) representing the Bow River basin, with one SUMMA process simulating the full domain using `-g 1 52`. For each GRU, SUMMA performs an independent land-surface simulation that generates runoff and other hydrologic model outputs. After all GRUs have been simulated, mizuRoute routes the generated runoff through the river network to the Banff streamflow gauge, where simulated streamflow is compared with observations to compute the modified Kling-Gupta efficiency (KGE'). Although the watershed is spatially distributed, the baseline is entirely serial because one SUMMA process handles all 52 GRUs using one requested CPU core.
 
-The SUMMA component is naturally parallelizable because GRUs are independent during the land-surface calculations. Each GRU can therefore be assigned to a different CPU core without affecting the results. In contrast, output concatenation and post-processing, mizuRoute, and diagnostic calculations occur after all GRUs have finished and therefore remain serial components of the workflow.
-
-Requesting additional CPU cores through Slurm alone does not reduce runtime because the workflow launches only one SUMMA process regardless of how many CPU cores are allocated. Slurm merely reserves additional hardware resources; the workflow itself must also be modified to execute multiple SUMMA processes concurrently.
+The SUMMA component is naturally parallelizable because GRUs are independent during the land-surface calculations. Each GRU can therefore be assigned to a different CPU core without affecting the results. In contrast, output concatenation and post-processing, mizuRoute, and diagnostic calculations occur after all GRUs have finished and therefore remain serial components of the workflow. Requesting additional CPU cores through Slurm alone does not reduce runtime because the workflow launches only one SUMMA process regardless of how many CPU cores are allocated. Slurm merely reserves additional hardware resources; the workflow itself must also be modified to execute multiple SUMMA processes concurrently.
 
 ## Parallelization
 
@@ -26,7 +24,7 @@ wait
 
 Each `srun` command creates one Slurm job step. The `--exclusive` option assigns distinct CPU resources to concurrent job steps, and `--ntasks=1` ensures that each step launches one SUMMA process instead of inheriting the job-level task count. The `&` operator launches each job step in the background so they execute simultaneously, while the `wait` command ensures that all SUMMA simulations finish before mizuRoute begins routing. Each SUMMA task requests one CPU, so the task count equals the requested CPU core count in this workflow.
 
-The Slurm submission script `submit_run.sh` must also be modified so that the allocated computing resources match the parallel workflow. For example, the two-core run requires changing the line
+The Slurm submission script `scripts/submit_run.sh` must also be modified so that the allocated computing resources match the parallel workflow. For example, the two-core run requires changing the line
 
 ```bash
 #SBATCH --ntasks=1
@@ -42,7 +40,7 @@ to the following:
 
 Both `scripts/run_SUMMA_mizuRoute.sh` and `submit_run.sh` must be modified because they perform different roles. The workflow script determines how many SUMMA processes are launched, whereas the Slurm submission script reserves sufficient CPU cores for those processes. Changing only one of the two files would either leave CPU cores unused or oversubscribe the allocated resources.
 
-The 52 GRUs should be divided as evenly as possible among CPU cores to minimize load imbalance. Example decompositions include 26 GRUs each for two cores, 17, 17, and 18 for three cores, and 13 GRUs each for four cores. For this study, we selected $p_{\max}=8$ because the virtual cluster provided eight virtual CPU cores, the host machine provided 10 physical CPU cores, and the domain contained more than eight GRUs. The KGE' value was 0.895356 for every core count, matching the serial result.
+The 52 GRUs should be divided as evenly as possible among CPU cores to minimize load imbalance. Example decompositions include 26 GRUs each for two cores, 17, 17, and 18 for three cores, and 13 GRUs each for four cores. For this study, we selected $p_{\max}=8$, which is the maximum number of virtual CPU cores available on the `vhpc-hydrotools` cluster, fits within the 10 physical CPU cores of the host machine, and remains below the total number of GRUs. The KGE' value was 0.895356 for every core count, matching the serial result.
 
 ## Performance Evaluation
 
@@ -50,10 +48,10 @@ This exercise evaluates **strong scaling**, where the total computational worklo
 
 $$
 S_p(N)=\frac{T_1(N)}{T_p(N)}, \qquad
-E_p(N)=\frac{S_p(N)}{p}
+E_p(N)=\frac{S_p(N)}{p},
 $$
 
-where $T_1(N)$ is the one-core runtime, $T_p(N)$ is the runtime using $p$ cores, and $p$ is the number of requested CPU cores. The results are summarized in the table below:
+where $T_1(N)$ is the one-core runtime, $T_p(N)$ is the runtime using $p$ cores, and $p$ is the number of requested CPU cores. The scaling results are summarized in the table below:
 
 | Slurm Job ID | Requested CPU Cores | Runtime (s) | Speedup | Strong-Scaling Efficiency |
 | ---: | ---: | ---: | ---: | ---: |
@@ -83,7 +81,7 @@ The following figure plots the runtime, speedup, and strong-scaling efficiency a
 
 <img src="../figures/speedup_scaling_results.png" width="70%">
 
-Across the tested range, runtime decreases monotonically with increasing CPU core count, falling from 288 seconds on one core to 85 seconds on eight cores. Correspondingly, the speedup increases monotonically and reaches a maximum of 3.39 on eight cores. Although no hard plateau is reached, the speedup curve shows diminishing returns as additional cores are added, and strong-scaling efficiency declines from 0.76 on two cores to 0.42 on seven and eight cores. As such, increasing the core count effectively reduces runtime, although the measured speedup remains below the ideal linear speedup. Likely sources of this sublinear scaling include serial workflow components, such as routing and diagnostics, as well as process launch overhead, file system I/O contention, and load imbalance arising from differences in the computational requirements of individual GRUs.
+Across the tested range, runtime decreases monotonically with increasing CPU core count, falling from 288 seconds on one core to 85 seconds on eight cores. Correspondingly, the speedup increases monotonically and reaches a maximum of 3.39 on eight cores. Although no hard plateau is reached, the speedup curve shows diminishing returns as additional cores are added, and strong-scaling efficiency declines from 0.76 on two cores to 0.42 on seven and eight cores. As such, increasing the core count effectively reduces runtime, although the measured speedup remains below the ideal linear speedup. Likely sources of this sublinear scaling include serial workflow components, such as routing and diagnostics, as well as process launch overhead, file system I/O contention, and load imbalance arising from differences in the computational cost of individual GRU simulations.
 
 ## Recommendation and Reflection
 

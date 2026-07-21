@@ -18,7 +18,7 @@ $$
 \boldsymbol{\theta}^* = \arg\max_{\boldsymbol{\theta} \in \boldsymbol{\Theta}}\, \mathrm{KGE}^{\prime}\!\left(\mathbf{q}_s(\boldsymbol{\theta}), \mathbf{q}_o\right).
 $$
 
-Here, $\boldsymbol{\theta}$ is the vector of parameter multipliers, $\boldsymbol{\Theta} \subset \mathbb{R}^d$ is the bounded parameter domain defined by the lower and upper limits specified in `ostIn.txt`, $d$ is the number of parameters being calibrated, and KGE' ([Kling et al., 2012](https://doi.org/10.1016/j.jhydrol.2012.01.011)) is defined as
+Here, $\boldsymbol{\theta}$ is the vector of parameter multipliers, $\boldsymbol{\Theta} \subset \mathbb{R}^d$ is the bounded parameter domain defined by the lower and upper limits specified in `ostIn.txt`, $d$ is the number of parameters being calibrated, and KGE' is defined as
 
 $$
 \mathrm{KGE}^{\prime} = 1 - \sqrt{(r - 1)^2 + (\gamma - 1)^2 + (\beta - 1)^2}.
@@ -39,13 +39,13 @@ git clone https://github.com/tristanmontoya/hydrolearn-hpc.git
 cd hydrolearn-hpc
 ```
 
-The repository contains a working calibration workflow configured to use the serial DDS algorithm, which evaluates one candidate parameter set at a time. Before editing anything, it is important to understand the structure of the serial program. First, change into the case directory:
+The `hydrolearn-hpc` repository contains a working calibration workflow configured to use the serial DDS algorithm, which evaluates one candidate parameter set at a time. Before editing anything, it is important to understand the structure of the serial program. First, change into the case directory:
 
 ```sh
 cd bow_at_banff_lumped_calibration
 ```
 
-Inspect the following files:
+Next, inspect the following files:
 
 ```
 ostIn.txt
@@ -65,7 +65,7 @@ set -euo pipefail
 ostrich
 ```
 
-Your goal is to first run the unchanged serial calibration through Slurm, then modify the optimizer and launch the parallel calibration with Slurm and MPI. At this stage, focus on the structure of the serial workflow: OSTRICH chooses a candidate parameter set, `run_trial.sh` evaluates that candidate by running SUMMA and calculating KGE', and OSTRICH uses the result to choose the next candidate.
+Your goal is to first run the unchanged serial calibration through Slurm, then modify the optimizer and launch the parallel calibration with Slurm and MPI. At this stage, focus on the structure of the serial workflow: OSTRICH chooses a candidate parameter set, `scripts/run_trial.sh` evaluates that candidate by running SUMMA and calculating KGE', and OSTRICH uses the result to choose the next candidate.
 
 Before changing the optimizer, run the serial workflow as a scheduled Slurm job. Do not run the calibration directly on the login or head node, because even the serial calibration consumes shared resources for an extended period. Open `scripts/run_ostrich.sh` and modify it so that it remains a serial OSTRICH run, but is submitted through Slurm:
 
@@ -252,7 +252,7 @@ cat scaling_archive_123456/output_archive/KGE.txt
 ls scaling_archive_123456/output_archive
 ```
 
-Then run `sacct` for each completed job, replacing `123456` with the corresponding job ID:
+To obtain the timing results, run `sacct` for each completed job, replacing `123456` with the corresponding job ID:
 
 ```sh
 sacct -j 123456.0 --format=JobID,NTasks,Elapsed
